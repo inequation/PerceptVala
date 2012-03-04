@@ -1,5 +1,5 @@
-# perceptvala makefile
-# Written by Leszek Godlewski
+# PerceptVala makefile
+# Written by Leszek Godlewski <github@inequation.org>
 
 # =============================================================================
 # Configuration
@@ -13,7 +13,7 @@ MKDIR_P = mkdir -p
 # path to the Vala compiler
 VALAC = valac
 # valac flags
-VALACFLAGS =
+VALACFLAGS = --pkg gdk-2.0 --pkg gee-1.0 -X -lgdk_pixbuf-2.0 -X -lSDL -X -I/usr/include/glib-2.0/
 # debug dist directory
 DEBUG_DIST_DIR = ../bin/Debug
 # release dist directory
@@ -28,20 +28,25 @@ EXEC_EXT =
 
 all: release
 
+cleandebug: clean
+
+cleanrelease: clean
+
 clean:
-	rm -f perceptvala
+	echo Cleaning...
+	rm -f perceptvala *.vala.c
 
 # recursively call make with proper flags
 release:
-	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert --Xcc=-03"
+	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert -X -03"
 	$(MKDIR_P) $(RELEASE_DIST_DIR)
 	mv perceptvala $(RELEASE_DIST_DIR)
 
 # recursively call make with proper flags
 debug:
-	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) -g"
+	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) -g --save-temps"
 	$(MKDIR_P) $(DEBUG_DIST_DIR)
 	mv perceptvala $(DEBUG_DIST_DIR)
 
-perceptvala: Main.vala NeuronInput.vala ImagePixel.vala Neuron.vala
-	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala NeuronInput.vala ImagePixel.vala Neuron.vala
+perceptvala: Main.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala
+	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala
