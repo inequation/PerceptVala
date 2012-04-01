@@ -1,8 +1,6 @@
 /**
 PerceptVala neural network class
 Written by Leszek Godlewski <github@inequation.org>
-
-@author Leszek Godlewski
 */
 
 using Gee;

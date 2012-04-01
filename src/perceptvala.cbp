@@ -49,6 +49,7 @@
 			<Option target="debug" />
 			<Option target="release" />
 		</Unit>
+		<Unit filename="MainWindow.vala" />
 		<Unit filename="Makefile">
 			<Option target="debug" />
 			<Option target="release" />

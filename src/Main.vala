@@ -1,13 +1,20 @@
 /**
 PerceptVala main file
 Written by Leszek Godlewski <github@inequation.org>
-
-@author Leszek Godlewski
 */
 
 using Gee;
+using Gtk;
 
-void main() {
+int main(string[] args) {
+	Gtk.init (ref args);
+
+    var window = new MainWindow ();
+
+    window.show_all ();
+
+    Gtk.main ();
+
 	stdout.printf("Building network...\n");
 	var img = new Image();
 
@@ -30,4 +37,6 @@ void main() {
 	stdout.printf("Results:\n");
 	foreach (bool b in results)
 		stdout.printf("%s\n", b ? "true" : "false");
+
+	return 0;
 }

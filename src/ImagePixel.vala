@@ -1,8 +1,6 @@
 /**
 PerceptVala image pixel neuron input class
 Written by Leszek Godlewski <github@inequation.org>
-
-@author Leszek Godlewski
 */
 
 public class ImagePixel : Neuron {

@@ -13,7 +13,7 @@ MKDIR_P = mkdir -p
 # path to the Vala compiler
 VALAC = valac
 # valac flags
-VALACFLAGS = --pkg gdk-2.0 --pkg gee-1.0 -X -lgdk_pixbuf-2.0 -X -lSDL -X -I/usr/include/glib-2.0/
+VALACFLAGS = --pkg gtk+-3.0 --pkg gee-1.0
 # debug dist directory
 DEBUG_DIST_DIR = ../bin/Debug
 # release dist directory
@@ -38,7 +38,7 @@ clean:
 
 # recursively call make with proper flags
 release:
-	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert -X -03"
+	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert -X -O3"
 	$(MKDIR_P) $(RELEASE_DIST_DIR)
 	mv perceptvala $(RELEASE_DIST_DIR)
 
@@ -48,5 +48,5 @@ debug:
 	$(MKDIR_P) $(DEBUG_DIST_DIR)
 	mv perceptvala $(DEBUG_DIST_DIR)
 
-perceptvala: Main.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala
-	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala
+perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala
+	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala

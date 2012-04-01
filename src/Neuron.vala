@@ -1,8 +1,6 @@
 /**
 PerceptVala neuron class
 Written by Leszek Godlewski <github@inequation.org>
-
-@author Leszek Godlewski
 */
 
 public class Neuron {
