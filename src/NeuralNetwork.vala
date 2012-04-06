@@ -6,11 +6,11 @@ Written by Leszek Godlewski <github@inequation.org>
 using Gee;
 
 public class NeuralNetwork {
-	/** Initializes a neural network with the given counts outputs. */
+	/** Initializes a neural network with the given count of outputs. */
 	public NeuralNetwork(uint outputs) {
 		m_outputs = new ArrayList<Neuron>();
 		for (uint i = 0; i < outputs; ++i)
-			m_outputs.add(new Neuron());
+			m_outputs.add(new Neuron(false));
 		m_top_layer = m_outputs;
 	}
 
@@ -19,6 +19,7 @@ public class NeuralNetwork {
 	 * creates synapses with random weights between them.
 	 */
 	public void insert_layer(ArrayList<Neuron> layer) {
+		int counter = 0;
 		foreach (Neuron n1 in m_top_layer) {
 			foreach (Neuron n2 in layer)
 				n1.add_synapse({n2, 2.0f * (float)Random.next_double() - 1.0f});
@@ -28,12 +29,12 @@ public class NeuralNetwork {
 
 	/**
 	 * Runs the neural network.
-	 * @return array of output signals cast to booleans
+	 * @return array of output signals
 	 */
-	public ArrayList<bool> run() {
-		var results = new ArrayList<bool>();
+	public ArrayList<float?> run() {
+		var results = new ArrayList<float?>();
 		foreach (Neuron n in m_outputs)
-			results.add(n.get_signal() >= 1.0f);
+			results.add(n.get_signal());
 		return results;
 	}
 

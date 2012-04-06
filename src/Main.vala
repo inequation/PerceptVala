@@ -15,7 +15,7 @@ int main(string[] args) {
 
     Gtk.main ();
 
-	stdout.printf("Building network...\n");
+	/*stdout.printf("Building network...\n");
 	var img = new Image();
 
 	var net = new NeuralNetwork(8);
@@ -36,7 +36,7 @@ int main(string[] args) {
 	var results = net.run();
 	stdout.printf("Results:\n");
 	foreach (bool b in results)
-		stdout.printf("%s\n", b ? "true" : "false");
+		stdout.printf("%s\n", b ? "true" : "false");*/
 
 	return 0;
 }

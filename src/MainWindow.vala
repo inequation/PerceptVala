@@ -4,17 +4,34 @@ Written by Leszek Godlewski <github@inequation.org>
 */
 
 using Gtk;
+using Gee;
 
 public class MainWindow : Window {
 	private Notebook m_notebook;
 	private RadioButton m_linear;
 	private RadioButton m_tanh;
+	private TreeView m_view;
+	private Button m_add;
+	private Button m_up;
+	private Button m_down;
+	private Button m_delete;
 
-	public TreeView m_net_model;
+	private TreeIter m_input_layer;
+	private TreeIter m_output_layer;
+
+	public ListStore m_net_model;
 	public Scale m_glyph_size;
 	public Scale m_layer_size;
 	public ComboBoxText m_start_output;
 	public ComboBoxText m_end_output;
+
+	public NeuralNetwork? m_network;
+
+	private enum ViewColumn {
+		TYPE,
+		SIZE,
+		IS_TANH
+	}
 
 	public MainWindow() {
 		title = "PerceptVala";
@@ -22,6 +39,8 @@ public class MainWindow : Window {
 		window_position = WindowPosition.CENTER;
 		set_default_size(640, 480);
 		destroy.connect(Gtk.main_quit);
+
+		m_network = null;
 
 		m_notebook = new Notebook();
 
@@ -53,21 +72,22 @@ public class MainWindow : Window {
 
 		grid.attach(new Label("Glyph size"), 0, 0, 1, 1);
 		m_glyph_size = new Scale.with_range(Orientation.HORIZONTAL, 8, 128, 1);
+		m_glyph_size.adjustment.value = 64;
+		m_glyph_size.change_value.connect((scroll, new_value)
+			=> {
+			m_net_model.set_value(m_input_layer, ViewColumn.SIZE,
+				(int)m_glyph_size.adjustment.value);
+			return false;
+		});
 		grid.attach(m_glyph_size, 1, 0, 1, 1);
 
-		grid.attach(new Label("Layer size"), 0, 1, 1, 1);
-		m_layer_size = new Scale.with_range(Orientation.HORIZONTAL, 1,
-			2 * m_glyph_size.adjustment.upper * m_glyph_size.adjustment.upper,
-			1);
-		grid.attach(m_layer_size, 1, 1, 1, 1);
-
-		grid.attach(new Label("First output character"), 0, 2, 1, 1);
+		grid.attach(new Label("First output character"), 0, 1, 1, 1);
 		m_start_output = new ComboBoxText();
-		grid.attach(m_start_output, 1, 2, 1, 1);
+		grid.attach(m_start_output, 1, 1, 1, 1);
 
-		grid.attach(new Label("Last output character"), 0, 3, 1, 1);
+		grid.attach(new Label("Last output character"), 0, 2, 1, 1);
 		m_end_output = new ComboBoxText();
-		grid.attach(m_end_output, 1, 3, 1, 1);
+		grid.attach(m_end_output, 1, 2, 1, 1);
 
 		for (int i = 32; i < 256; ++i) {
 			string id = "%d".printf(i);
@@ -75,10 +95,86 @@ public class MainWindow : Window {
 			m_start_output.append(id, text);
 			m_end_output.append(id, text);
 		}
+		m_start_output.active = 0;
+		m_end_output.active = 127 - 32;
+		m_start_output.changed.connect(() => {
+			if (m_end_output.active < m_start_output.active)
+				m_end_output.active = m_start_output.active;
+			m_net_model.set_value(m_output_layer, ViewColumn.SIZE,
+				(int)(m_end_output.active - m_start_output.active + 1));
+		});
+		m_end_output.changed.connect(() => {
+			if (m_start_output.active >= m_end_output.active)
+				m_start_output.active = m_end_output.active;
+			m_net_model.set_value(m_output_layer, ViewColumn.SIZE,
+				(int)(m_end_output.active - m_start_output.active + 1));
+		});
 
-		m_net_model = new TreeView.with_model(new ListStore(1));
-		m_net_model.expand = true;
-		grid.attach(m_net_model, 0, 4, 1, 1);
+		m_net_model = new ListStore(3,
+			typeof(string),
+			typeof(int),
+			typeof(bool));
+		m_view = new TreeView.with_model(m_net_model);
+		m_view.expand = true;
+		m_view.get_selection().mode = SelectionMode.SINGLE;
+		m_view.insert_column_with_attributes(-1, "Layer type",
+			new CellRendererText(), "text", 0);
+		m_view.insert_column_with_attributes(-1, "Layer size",
+			new CellRendererText(), "text", 1);
+		var checkbox = new CellRendererToggle();
+		m_view.insert_column_with_attributes(-1, "Is tanh()?",
+			checkbox, "active", 2);
+		checkbox.activatable = false;
+		grid.attach(m_view, 0, 3, 1, 1);
+		m_view.get_selection().changed.connect(() => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+
+			if (it == null) {
+				m_linear.sensitive = false;
+				m_tanh.sensitive = false;
+				m_layer_size.sensitive = false;
+				m_up.sensitive = false;
+				m_down.sensitive = false;
+				m_delete.sensitive = false;
+				return;
+			}
+
+			GLib.Value val;
+			bool is_tanh;
+			int count;
+
+			m_net_model.get_value(it, ViewColumn.SIZE, out val);
+			count = val.get_int();
+			m_net_model.get_value(it, ViewColumn.IS_TANH, out val);
+			is_tanh = val.get_boolean();
+
+			if (is_tanh)
+				m_tanh.active = true;
+			else
+				m_linear.active = true;
+			m_layer_size.adjustment.value = count;
+
+			bool enabled = it != m_input_layer && it != m_output_layer;
+			m_linear.sensitive = enabled;
+			m_tanh.sensitive = enabled;
+			m_layer_size.sensitive = enabled;
+			m_up.sensitive = enabled;
+			m_down.sensitive = enabled;
+			m_delete.sensitive = enabled;
+		});
+
+		m_net_model.append(out m_input_layer);
+		m_net_model.set(m_input_layer,
+			ViewColumn.TYPE, "Input",
+			ViewColumn.SIZE, (int)m_glyph_size.adjustment.value,
+			ViewColumn.IS_TANH, false);
+		m_net_model.append(out m_output_layer);
+		m_net_model.set(m_output_layer,
+			ViewColumn.TYPE, "Output",
+			ViewColumn.SIZE, (int)(m_end_output.active - m_start_output.active
+				+ 1),
+			ViewColumn.IS_TANH, false);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -90,18 +186,137 @@ public class MainWindow : Window {
 		m_tanh = new RadioButton.with_label_from_widget(m_linear, "tanh()");
 		subgrid.attach(m_linear, 0, 0, 4, 1);
 		subgrid.attach(m_tanh, 0, 1, 4, 1);
-		m_linear.active = true;
+		m_linear.clicked.connect(() => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+			if (it != null && it != m_input_layer && it != m_output_layer)
+				m_net_model.set_value(it, ViewColumn.IS_TANH, m_tanh.active);
+		});
+		m_tanh.clicked.connect(() => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+			if (it != null && it != m_input_layer && it != m_output_layer)
+				m_net_model.set_value(it, ViewColumn.IS_TANH, m_tanh.active);
+		});
+
+		subgrid.attach(new Label("Layer size"), 0, 2, 1, 1);
+		m_layer_size = new Scale.with_range(Orientation.HORIZONTAL, 1,
+			2 * m_glyph_size.adjustment.upper * m_glyph_size.adjustment.upper,
+			1);
+		subgrid.attach(m_layer_size, 1, 2, 3, 1);
+		m_layer_size.change_value.connect((scroll, new_value) => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+			if (it != null && it != m_input_layer && it != m_output_layer)
+				m_net_model.set_value(it, ViewColumn.SIZE,
+					(int)m_layer_size.adjustment.value);
+			return false;
+		});
 
 		var filler = new Label(" ");
 		filler.expand = true;
-		subgrid.attach(filler, 0, 2, 4, 1);
+		subgrid.attach(filler, 0, 3, 4, 1);
 
-		subgrid.attach(new Button.from_stock(Gtk.Stock.ADD), 0, 3, 1, 1);
-		subgrid.attach(new Button.from_stock(Gtk.Stock.GO_UP), 1, 3, 1, 1);
-		subgrid.attach(new Button.from_stock(Gtk.Stock.GO_DOWN), 2, 3, 1, 1);
-		subgrid.attach(new Button.from_stock(Gtk.Stock.DELETE), 3, 3, 1, 1);
+		m_add = new Button.from_stock(Gtk.Stock.ADD);
+		subgrid.attach(m_add, 0, 4, 1, 1);
+		m_add.clicked.connect(() => {
+			TreeIter it;
+			m_net_model.insert_before(out it, m_output_layer);
+			m_net_model.set(it,
+				ViewColumn.TYPE, "Hidden",
+				ViewColumn.SIZE, (int)(m_glyph_size.adjustment.value
+					* m_glyph_size.adjustment.value),
+				ViewColumn.IS_TANH, false);
+			m_view.get_selection().select_iter(it);
+		});
 
-		grid.attach(subgrid, 1, 4, 1, 1);
+		m_up = new Button.from_stock(Gtk.Stock.GO_UP);
+		//m_up.sensitive = false;
+		subgrid.attach(m_up, 1, 4, 1, 1);
+		m_up.clicked.connect(() => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+			if (it != null && it != m_input_layer && it != m_output_layer) {
+				TreeIter prev = it;
+				m_net_model.iter_previous(ref prev);
+				if (prev == m_input_layer)
+					return;
+				m_net_model.swap(it, prev);
+			}
+		});
+
+		m_down = new Button.from_stock(Gtk.Stock.GO_DOWN);
+		//down.sensitive = false;
+		subgrid.attach(m_down, 2, 4, 1, 1);
+		m_down.clicked.connect(() => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+			if (it != null && it != m_input_layer && it != m_output_layer) {
+				TreeIter next = it;
+				m_net_model.iter_next(ref next);
+				if (next == m_output_layer)
+					return;
+				m_net_model.swap(it, next);
+			}
+		});
+
+		m_delete = new Button.from_stock(Gtk.Stock.DELETE);
+		//m_delete.sensitive = false;
+		subgrid.attach(m_delete, 3, 4, 1, 1);
+		m_delete.clicked.connect(() => {
+			TreeIter? it;
+			m_view.get_selection().get_selected(null, out it);
+			if (it != null && it != m_input_layer && it != m_output_layer) {
+				m_net_model.remove(it);
+				m_view.get_selection().select_iter(m_input_layer);
+			}
+		});
+
+		var save = new Button.from_stock(Gtk.Stock.SAVE);
+		subgrid.attach(save, 0, 5, 4, 1);
+		save.clicked.connect(() => {
+			GLib.Value val;
+			bool is_tanh;
+			int count;
+
+			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
+			count = val.get_int();
+			stdout.printf("Building network - %d outputs...\n", count);
+			m_network = new NeuralNetwork(count);
+
+			TreeIter it = m_output_layer;
+			bool valid = m_net_model.iter_previous(ref it);
+			while (valid && it != m_input_layer) {
+				// retrieve layer properties from the list store
+				m_net_model.get_value(it, ViewColumn.SIZE, out val);
+				count = val.get_int();
+				m_net_model.get_value(it, ViewColumn.IS_TANH, out val);
+				is_tanh = val.get_boolean();
+
+				stdout.printf("Inserting hidden layer of %d %s neurons...\n",
+					count, is_tanh ? "tanh()" : "linear");
+				var hidden_layer = new ArrayList<Neuron>();
+				for (int i = 0; i < count; ++i)
+					hidden_layer.add(new Neuron(is_tanh));
+				m_network.insert_layer(hidden_layer);
+
+				valid = m_net_model.iter_previous(ref it);
+			}
+
+			m_net_model.get_value(m_input_layer, ViewColumn.SIZE, out val);
+			count = val.get_int();
+			stdout.printf("Inserting input layer of %d neurons...\n", count);
+			var input_layer = new ArrayList<ImagePixel>();
+			for (uint y = 0; y < (uint)Math.sqrt(count); ++y) {
+				for (uint x = 0; x < (uint)Math.sqrt(count); ++x)
+					input_layer.add(new ImagePixel(x, y));
+			}
+			m_network.insert_layer(input_layer);
+		});
+
+		grid.attach(subgrid, 1, 3, 1, 1);
+
+		m_view.get_selection().select_iter(m_input_layer);
 
 		return grid;
 	}
