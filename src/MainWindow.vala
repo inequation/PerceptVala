@@ -8,6 +8,8 @@ using Gee;
 
 public class MainWindow : Window {
 	private Notebook m_notebook;
+
+	// network setup widgets
 	private RadioButton m_linear;
 	private RadioButton m_tanh;
 	private TreeView m_view;
@@ -16,14 +18,25 @@ public class MainWindow : Window {
 	private Button m_down;
 	private Button m_delete;
 
+	// network model widgets and stuff
+	private ListStore m_net_model;
 	private TreeIter m_input_layer;
 	private TreeIter m_output_layer;
+	private Scale m_glyph_size;
+	private Scale m_layer_size;
+	private ComboBoxText m_start_output;
+	private ComboBoxText m_end_output;
 
-	public ListStore m_net_model;
-	public Scale m_glyph_size;
-	public Scale m_layer_size;
-	public ComboBoxText m_start_output;
-	public ComboBoxText m_end_output;
+	// training widgets
+	private FontButton m_train_font_button;
+	private CharacterRenderer m_training_renderer;
+	private Scale m_x_train_jitter;
+	private Scale m_y_train_jitter;
+	private FontButton m_test_font_button;
+	private Scale m_x_test_jitter;
+	private Scale m_y_test_jitter;
+	private Scale m_noise;
+	private CharacterRenderer m_testing_renderer;
 
 	public NeuralNetwork? m_network;
 
@@ -50,8 +63,8 @@ public class MainWindow : Window {
 		m_notebook.append_page(net_setup_page, net_setup_label);
 
 		// create the learning tab
-		var learning_label = new Label("Teaching");
-		var learning_page = create_teaching_page();
+		var learning_label = new Label("Training");
+		var learning_page = create_training_page();
 		m_notebook.append_page(learning_page, learning_label);
 
 		// create the testing tab
@@ -231,7 +244,6 @@ public class MainWindow : Window {
 		});
 
 		m_up = new Button.from_stock(Gtk.Stock.GO_UP);
-		//m_up.sensitive = false;
 		subgrid.attach(m_up, 1, 4, 1, 1);
 		m_up.clicked.connect(() => {
 			TreeIter? it;
@@ -246,7 +258,6 @@ public class MainWindow : Window {
 		});
 
 		m_down = new Button.from_stock(Gtk.Stock.GO_DOWN);
-		//down.sensitive = false;
 		subgrid.attach(m_down, 2, 4, 1, 1);
 		m_down.clicked.connect(() => {
 			TreeIter? it;
@@ -261,7 +272,6 @@ public class MainWindow : Window {
 		});
 
 		m_delete = new Button.from_stock(Gtk.Stock.DELETE);
-		//m_delete.sensitive = false;
 		subgrid.attach(m_delete, 3, 4, 1, 1);
 		m_delete.clicked.connect(() => {
 			TreeIter? it;
@@ -312,6 +322,10 @@ public class MainWindow : Window {
 					input_layer.add(new ImagePixel(x, y));
 			}
 			m_network.insert_layer(input_layer);
+
+			stdout.printf("Network built.\n");
+
+			m_notebook.page = 1;
 		});
 
 		grid.attach(subgrid, 1, 3, 1, 1);
@@ -321,11 +335,105 @@ public class MainWindow : Window {
 		return grid;
 	}
 
-	private Widget create_teaching_page() {
-		return new Grid();
+	private Widget create_training_page() {
+		var grid = new Grid();
+
+		grid.column_spacing = 5;
+		grid.row_spacing = 5;
+		grid.column_homogeneous = true;
+		grid.row_homogeneous = false;
+
+		grid.attach(new Label("Font"), 0, 0, 1, 1);
+		m_train_font_button = new FontButton();
+		m_train_font_button.use_font = true;
+		m_train_font_button.use_size = true;
+		//m_train_font_button.font_desc.set_size(8);
+		grid.attach(m_train_font_button, 1, 0, 1, 1);
+
+		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
+		m_x_train_jitter = new Scale.with_range(Orientation.HORIZONTAL,
+			0, 100, 1);
+		grid.attach(m_x_train_jitter, 1, 1, 1, 1);
+
+		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
+		m_y_train_jitter = new Scale.with_range(Orientation.HORIZONTAL,
+			0, 100, 1);
+		grid.attach(m_y_train_jitter, 1, 2, 1, 1);
+
+		grid.attach(new Label("Preview character code"), 0, 3, 1, 1);
+		var charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
+		grid.attach(charsel, 0, 4, 1, 1);
+
+		var subgrid = new Grid();
+		subgrid.column_spacing = 5;
+		subgrid.row_spacing = 5;
+		subgrid.column_homogeneous = true;
+		subgrid.row_homogeneous = false;
+
+		var rand = new Button.with_label("Re-randomize");
+		subgrid.attach(rand, 0, 0, 1, 1);
+
+		var train = new Button.from_stock(Gtk.Stock.OK);
+		subgrid.attach(train, 1, 0, 1, 1);
+
+		grid.attach(subgrid, 0, 5, 1, 1);
+
+		m_training_renderer = new CharacterRenderer();
+		grid.attach(m_training_renderer, 1, 3, 1, 2);
+
+		return grid;
 	}
 
 	private Widget create_testing_page() {
-		return new Grid();
+		var grid = new Grid();
+
+		grid.column_spacing = 5;
+		grid.row_spacing = 5;
+		grid.column_homogeneous = true;
+		grid.row_homogeneous = false;
+
+		grid.attach(new Label("Font"), 0, 0, 1, 1);
+		m_test_font_button = new FontButton();
+		m_test_font_button.use_font = true;
+		m_test_font_button.use_size = true;
+		//m_test_font_button.font_desc.set_size(8);
+		grid.attach(m_test_font_button, 1, 0, 1, 1);
+
+		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
+		m_x_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
+			0, 100, 1);
+		grid.attach(m_x_test_jitter, 1, 1, 1, 1);
+
+		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
+		m_y_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
+			0, 100, 1);
+		grid.attach(m_y_test_jitter, 1, 2, 1, 1);
+
+		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
+		m_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
+		grid.attach(m_noise, 1, 3, 1, 1);
+
+		grid.attach(new Label("Character code"), 0, 4, 1, 1);
+		var charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
+		grid.attach(charsel, 0, 5, 1, 1);
+
+		var subgrid = new Grid();
+		subgrid.column_spacing = 5;
+		subgrid.row_spacing = 5;
+		subgrid.column_homogeneous = true;
+		subgrid.row_homogeneous = false;
+
+		var rand = new Button.with_label("Re-randomize");
+		subgrid.attach(rand, 0, 0, 1, 1);
+
+		var train = new Button.from_stock(Gtk.Stock.OK);
+		subgrid.attach(train, 1, 0, 1, 1);
+
+		grid.attach(subgrid, 0, 6, 1, 1);
+
+		m_testing_renderer = new CharacterRenderer();
+		grid.attach(m_testing_renderer, 1, 4, 1, 2);
+
+		return grid;
 	}
 }

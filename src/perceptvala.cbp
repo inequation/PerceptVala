@@ -37,6 +37,7 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="CharacterRenderer.vala" />
 		<Unit filename="Image.vala">
 			<Option target="debug" />
 			<Option target="release" />

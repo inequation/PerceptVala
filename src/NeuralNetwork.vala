@@ -19,7 +19,6 @@ public class NeuralNetwork {
 	 * creates synapses with random weights between them.
 	 */
 	public void insert_layer(ArrayList<Neuron> layer) {
-		int counter = 0;
 		foreach (Neuron n1 in m_top_layer) {
 			foreach (Neuron n2 in layer)
 				n1.add_synapse({n2, 2.0f * (float)Random.next_double() - 1.0f});
