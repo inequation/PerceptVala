@@ -13,7 +13,7 @@ MKDIR_P = mkdir -p
 # path to the Vala compiler
 VALAC = valac
 # valac flags
-VALACFLAGS = --pkg gtk+-3.0 --pkg gee-1.0
+VALACFLAGS = --pkg gtk+-3.0 --pkg cairo --pkg pango --pkg gee-1.0
 # debug dist directory
 DEBUG_DIST_DIR = ../bin/Debug
 # release dist directory

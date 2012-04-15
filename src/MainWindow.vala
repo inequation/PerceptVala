@@ -32,11 +32,15 @@ public class MainWindow : Window {
 	private CharacterRenderer m_training_renderer;
 	private Scale m_x_train_jitter;
 	private Scale m_y_train_jitter;
+	private Scale m_train_charsel;
+
+	// testing widgets
 	private FontButton m_test_font_button;
 	private Scale m_x_test_jitter;
 	private Scale m_y_test_jitter;
 	private Scale m_noise;
 	private CharacterRenderer m_testing_renderer;
+	private Scale m_test_charsel;
 
 	public NeuralNetwork? m_network;
 
@@ -45,6 +49,8 @@ public class MainWindow : Window {
 		SIZE,
 		IS_TANH
 	}
+
+	private static const int CHARSEL_WIDTH_REQUEST = 256 * 2;
 
 	public MainWindow() {
 		title = "PerceptVala";
@@ -89,7 +95,10 @@ public class MainWindow : Window {
 		m_glyph_size.change_value.connect((scroll, new_value)
 			=> {
 			m_net_model.set_value(m_input_layer, ViewColumn.SIZE,
-				(int)m_glyph_size.adjustment.value);
+				(int)(m_glyph_size.adjustment.value
+					* m_glyph_size.adjustment.value));
+			m_training_renderer.dimension = m_testing_renderer.dimension =
+				(int)(m_glyph_size.adjustment.value);
 			return false;
 		});
 		grid.attach(m_glyph_size, 1, 0, 1, 1);
@@ -180,7 +189,8 @@ public class MainWindow : Window {
 		m_net_model.append(out m_input_layer);
 		m_net_model.set(m_input_layer,
 			ViewColumn.TYPE, "Input",
-			ViewColumn.SIZE, (int)m_glyph_size.adjustment.value,
+			ViewColumn.SIZE, (int)(m_glyph_size.adjustment.value
+				* m_glyph_size.adjustment.value),
 			ViewColumn.IS_TANH, false);
 		m_net_model.append(out m_output_layer);
 		m_net_model.set(m_output_layer,
@@ -340,14 +350,16 @@ public class MainWindow : Window {
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
-		grid.column_homogeneous = true;
+		grid.column_homogeneous = false;
 		grid.row_homogeneous = false;
 
 		grid.attach(new Label("Font"), 0, 0, 1, 1);
 		m_train_font_button = new FontButton();
 		m_train_font_button.use_font = true;
 		m_train_font_button.use_size = true;
-		//m_train_font_button.font_desc.set_size(8);
+		m_train_font_button.font_set.connect(() => {
+			m_training_renderer.queue_draw();
+		});
 		grid.attach(m_train_font_button, 1, 0, 1, 1);
 
 		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
@@ -361,8 +373,14 @@ public class MainWindow : Window {
 		grid.attach(m_y_train_jitter, 1, 2, 1, 1);
 
 		grid.attach(new Label("Preview character code"), 0, 3, 1, 1);
-		var charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
-		grid.attach(charsel, 0, 4, 1, 1);
+		m_train_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
+		m_train_charsel.width_request = CHARSEL_WIDTH_REQUEST;
+		m_train_charsel.change_value.connect((scroll, new_value)
+			=> {
+			m_training_renderer.queue_draw();
+			return false;
+		});
+		grid.attach(m_train_charsel, 0, 4, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -378,7 +396,10 @@ public class MainWindow : Window {
 
 		grid.attach(subgrid, 0, 5, 1, 1);
 
-		m_training_renderer = new CharacterRenderer();
+		m_training_renderer = new CharacterRenderer(
+			(FontChooser)m_train_font_button,
+			() => {return (unichar)(m_train_charsel.adjustment.value);},
+			64);
 		grid.attach(m_training_renderer, 1, 3, 1, 2);
 
 		return grid;
@@ -389,14 +410,16 @@ public class MainWindow : Window {
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
-		grid.column_homogeneous = true;
+		grid.column_homogeneous = false;
 		grid.row_homogeneous = false;
 
 		grid.attach(new Label("Font"), 0, 0, 1, 1);
 		m_test_font_button = new FontButton();
 		m_test_font_button.use_font = true;
 		m_test_font_button.use_size = true;
-		//m_test_font_button.font_desc.set_size(8);
+		m_test_font_button.font_set.connect(() => {
+			m_testing_renderer.queue_draw();
+		});
 		grid.attach(m_test_font_button, 1, 0, 1, 1);
 
 		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
@@ -414,8 +437,14 @@ public class MainWindow : Window {
 		grid.attach(m_noise, 1, 3, 1, 1);
 
 		grid.attach(new Label("Character code"), 0, 4, 1, 1);
-		var charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
-		grid.attach(charsel, 0, 5, 1, 1);
+		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
+		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
+		m_test_charsel.change_value.connect((scroll, new_value)
+			=> {
+			m_testing_renderer.queue_draw();
+			return false;
+		});
+		grid.attach(m_test_charsel, 0, 5, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -431,7 +460,10 @@ public class MainWindow : Window {
 
 		grid.attach(subgrid, 0, 6, 1, 1);
 
-		m_testing_renderer = new CharacterRenderer();
+		m_testing_renderer = new CharacterRenderer(
+			(FontChooser)m_test_font_button,
+			() => {return (unichar)(m_test_charsel.adjustment.value);},
+			64);
 		grid.attach(m_testing_renderer, 1, 4, 1, 2);
 
 		return grid;
