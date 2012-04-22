@@ -5,6 +5,7 @@ Written by Leszek Godlewski <github@inequation.org>
 
 using Gtk;
 using Pango;
+using Cairo;
 
 public class CharacterRenderer : Gtk.Misc {
 	public delegate unichar CharacterDelegate();
@@ -12,6 +13,8 @@ public class CharacterRenderer : Gtk.Misc {
 	private FontChooser m_font_chooser;
 	private int m_dim;
 	private CharacterDelegate m_char;
+
+	private uchar[] m_png_buffer;
 
 	public int dimension {
 		get { return m_dim; }
@@ -25,6 +28,12 @@ public class CharacterRenderer : Gtk.Misc {
 		m_font_chooser = fch;
 		m_char = d;
 		dimension = dim;
+	}
+
+	public Status write_func(uchar[] data)
+	{
+		stdout.printf("DUPA %d\n", data.length);
+		return Status.SUCCESS;
 	}
 
 	public override bool draw (Cairo.Context ctx) {
@@ -55,6 +64,11 @@ public class CharacterRenderer : Gtk.Misc {
 		playout.set_height((int)((m_dim - offset) * Pango.SCALE));
 
 		cairo_show_layout(ctx, playout);
+
+		/*stdout.printf("WRITE START\n");
+		ctx.get_target().write_to_png_stream(write_func);
+		stdout.printf("WRITE END\n");*/
+		ctx.get_target().write_to_png("test.png");
 
 		return false;
 	}

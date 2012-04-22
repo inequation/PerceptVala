@@ -396,11 +396,14 @@ public class MainWindow : Window {
 
 		grid.attach(subgrid, 0, 5, 1, 1);
 
+		var fixed = new Fixed();
+		grid.attach(fixed, 1, 3, 1, 2);
+
 		m_training_renderer = new CharacterRenderer(
 			(FontChooser)m_train_font_button,
 			() => {return (unichar)(m_train_charsel.adjustment.value);},
 			64);
-		grid.attach(m_training_renderer, 1, 3, 1, 2);
+		fixed.put(m_training_renderer, 0, 0);
 
 		return grid;
 	}
@@ -460,11 +463,14 @@ public class MainWindow : Window {
 
 		grid.attach(subgrid, 0, 6, 1, 1);
 
+		var fixed = new Fixed();
+		grid.attach(fixed, 1, 4, 1, 2);
+
 		m_testing_renderer = new CharacterRenderer(
 			(FontChooser)m_test_font_button,
 			() => {return (unichar)(m_test_charsel.adjustment.value);},
 			64);
-		grid.attach(m_testing_renderer, 1, 4, 1, 2);
+		fixed.put(m_testing_renderer, 0, 0);
 
 		return grid;
 	}
