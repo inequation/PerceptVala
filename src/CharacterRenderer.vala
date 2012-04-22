@@ -14,13 +14,20 @@ public class CharacterRenderer : Gtk.Misc {
 	private int m_dim;
 	private CharacterDelegate m_char;
 
-	private uchar[] m_png_buffer;
+	private ImageSurface m_surf;
+	private Cairo.Context m_ctx;
+	private Pango.Layout m_playout;
 
 	public int dimension {
 		get { return m_dim; }
 		set {
-			height_request = width_request = m_dim = value;
-			queue_draw();
+			if (value != m_dim) {
+				height_request = width_request = m_dim = value;
+				m_surf = new ImageSurface(Format.RGB24, m_dim, m_dim);
+				m_ctx = new Cairo.Context(m_surf);
+				m_playout = Pango.cairo_create_layout(m_ctx);
+				queue_draw();
+			}
 		}
 	}
 
@@ -30,20 +37,14 @@ public class CharacterRenderer : Gtk.Misc {
 		dimension = dim;
 	}
 
-	public Status write_func(uchar[] data)
-	{
-		stdout.printf("DUPA %d\n", data.length);
-		return Status.SUCCESS;
-	}
+	private void render(Cairo.Context ctx) {
+		ctx.save();
 
-	public override bool draw (Cairo.Context ctx) {
-		var playout = Pango.cairo_create_layout(ctx);
-		playout.set_font_description(m_font_chooser.get_font_desc());
-		playout.set_markup(m_char().to_string(), -1);
+		m_playout.set_font_description(m_font_chooser.get_font_desc());
+		m_playout.set_markup(m_char().to_string(), -1);
 
 		ctx.set_source_rgb(1, 1, 1);
-		ctx.rectangle(0, 0, m_dim, m_dim);
-		ctx.fill();
+		ctx.paint();
 
 		// bounds debugging
 		/*ctx.set_source_rgba(0, 1, 0, 0.7);
@@ -53,23 +54,26 @@ public class CharacterRenderer : Gtk.Misc {
 
 		ctx.set_source_rgb(0, 0, 0);
 
-		playout.set_width((int)(m_dim * Pango.SCALE) );
-		playout.set_ellipsize(Pango.EllipsizeMode.MIDDLE);
-		playout.set_alignment(Pango.Alignment.CENTER);
-		playout.set_justify(false);
+		m_playout.set_width((int)(m_dim * Pango.SCALE) );
+		m_playout.set_ellipsize(Pango.EllipsizeMode.MIDDLE);
+		m_playout.set_alignment(Pango.Alignment.CENTER);
+		m_playout.set_justify(false);
 
-		int offset = m_dim / 2 - playout.get_baseline() / Pango.SCALE / 2;
+		int offset = m_dim / 2 - m_playout.get_baseline() / Pango.SCALE / 2;
 		ctx.translate(0, offset);
 
-		playout.set_height((int)((m_dim - offset) * Pango.SCALE));
+		m_playout.set_height((int)((m_dim - offset) * Pango.SCALE));
 
-		cairo_show_layout(ctx, playout);
+		cairo_show_layout(ctx, m_playout);
 
-		/*stdout.printf("WRITE START\n");
-		ctx.get_target().write_to_png_stream(write_func);
-		stdout.printf("WRITE END\n");*/
-		ctx.get_target().write_to_png("test.png");
+		ctx.restore();
+	}
 
+	public override bool draw (Cairo.Context ctx)
+	{
+		render(m_ctx);
+		ctx.set_source_surface(m_surf, 0, 0);
+		ctx.paint();
 		return false;
 	}
 }
