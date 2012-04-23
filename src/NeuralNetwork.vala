@@ -41,6 +41,10 @@ public class NeuralNetwork {
 		get { return m_outputs; }
 	}
 
+	public ArrayList<ImagePixel>? inputs {
+		get { return (ArrayList<ImagePixel>)m_top_layer; }
+	}
+
 	private ArrayList<Neuron> m_outputs;
 	private ArrayList<Neuron> m_top_layer;
 }

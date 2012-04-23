@@ -18,6 +18,8 @@ public class CharacterRenderer : Gtk.Misc {
 	private Cairo.Context m_ctx;
 	private Pango.Layout m_playout;
 
+	private uint32 m_seed;
+
 	public int dimension {
 		get { return m_dim; }
 		set {
@@ -75,5 +77,12 @@ public class CharacterRenderer : Gtk.Misc {
 		ctx.set_source_surface(m_surf, 0, 0);
 		ctx.paint();
 		return false;
+	}
+
+	public uint8[] get_pixel(uint x, uint y) {
+		// TODO
+		uchar[] p = m_surf.get_data();
+		uint offset = (y * m_dim + x) * 3;
+		return p[offset:offset + 3];
 	}
 }

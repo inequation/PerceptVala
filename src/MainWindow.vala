@@ -78,6 +78,20 @@ public class MainWindow : Window {
 		var testing_page = create_testing_page();
 		m_notebook.append_page(testing_page, testing_label);
 
+		m_notebook.switch_page.connect((page, page_num) => {
+			if (m_network == null)
+				return;
+
+			CharacterRenderer? r;
+			switch (page_num) {
+				case 1: r = m_training_renderer; break;
+				case 2: r = m_testing_renderer; break;
+				default: r = null; break;
+			}
+			foreach (ImagePixel i in m_network.inputs)
+				i.image = r;
+		});
+
 		add(m_notebook);
 	}
 
