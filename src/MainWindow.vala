@@ -41,6 +41,7 @@ public class MainWindow : Window {
 	private Scale m_noise;
 	private CharacterRenderer m_testing_renderer;
 	private Scale m_test_charsel;
+	private Label m_test_result;
 
 	public NeuralNetwork? m_network;
 
@@ -463,6 +464,10 @@ public class MainWindow : Window {
 		});
 		grid.attach(m_test_charsel, 0, 5, 1, 1);
 
+		grid.attach(new Label("Recognized character"), 0, 6, 1, 1);
+		m_test_result = new Label(" ");
+		grid.attach(m_test_result, 1, 6, 1, 1);
+
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
 		subgrid.row_spacing = 5;
@@ -473,9 +478,29 @@ public class MainWindow : Window {
 		subgrid.attach(rand, 0, 0, 1, 1);
 
 		var train = new Button.from_stock(Gtk.Stock.OK);
+		train.clicked.connect(() => {
+			if (m_network == null) {
+				var msgbox = new MessageDialog(this,
+					DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+					MessageType.INFO, ButtonsType.OK,
+					"A network needs to be built first using the setup tab.");
+				msgbox.run();
+				msgbox.destroy();
+				return;
+			}
+			stdout.printf("Running network...");
+			var net_output = m_network.run();
+			stdout.printf("done.\n");
+			uint result = 0;
+			foreach (float activation in net_output) {
+				result <<= 1;
+				result |= (activation >= 1.0f) ? 1 : 0;
+			}
+			m_test_result.set_text("#%u: '%c'".printf(result, (char)result));
+		});
 		subgrid.attach(train, 1, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 6, 1, 1);
+		grid.attach(subgrid, 0, 7, 1, 1);
 
 		var fixed = new Fixed();
 		grid.attach(fixed, 1, 4, 1, 2);
