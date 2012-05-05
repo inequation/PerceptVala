@@ -13,7 +13,7 @@ public class ImagePixel : Neuron {
 
 	public override float get_signal() {
 		if (image == null)
-			return 0.0f;
+			return 1.0f;
 		uint8[] pixel = image.get_pixel(m_x, m_y);
 		return 0.2126f * ((float)pixel[0] / 255.0f)
 				+ 0.7152f * ((float)pixel[1] / 255.0f)

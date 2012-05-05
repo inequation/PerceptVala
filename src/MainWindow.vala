@@ -106,7 +106,7 @@ public class MainWindow : Window {
 
 		grid.attach(new Label("Glyph size"), 0, 0, 1, 1);
 		m_glyph_size = new Scale.with_range(Orientation.HORIZONTAL, 8, 128, 1);
-		m_glyph_size.adjustment.value = 64;
+		m_glyph_size.adjustment.value = 16;
 		m_glyph_size.change_value.connect((scroll, new_value)
 			=> {
 			m_net_model.set_value(m_input_layer, ViewColumn.SIZE,
@@ -132,8 +132,8 @@ public class MainWindow : Window {
 			m_start_output.append(id, text);
 			m_end_output.append(id, text);
 		}
-		m_start_output.active = 0;
-		m_end_output.active = 127 - 32;
+		m_start_output.active = '0' - 32;
+		m_end_output.active = '9' - 32;
 		m_start_output.changed.connect(() => {
 			if (m_end_output.active < m_start_output.active)
 				m_end_output.active = m_start_output.active;
@@ -417,7 +417,7 @@ public class MainWindow : Window {
 		m_training_renderer = new CharacterRenderer(
 			(FontChooser)m_train_font_button,
 			() => {return (unichar)(m_train_charsel.adjustment.value);},
-			64);
+			(int)m_glyph_size.adjustment.value);
 		fixed.put(m_training_renderer, 0, 0);
 
 		return grid;
@@ -491,12 +491,26 @@ public class MainWindow : Window {
 			stdout.printf("Running network...");
 			var net_output = m_network.run();
 			stdout.printf("done.\n");
-			uint result = 0;
+			int counter = 0, result = -2;
+			var outputs = new StringBuilder();
 			foreach (float activation in net_output) {
-				result <<= 1;
-				result |= (activation >= 1.0f) ? 1 : 0;
+				if (activation >= 1.0f) {
+					outputs.append("1");
+					if (result == -2)
+						result = counter;
+					else
+						// ambiguous
+						result = -1;
+				} else
+					outputs.append("0");
+				++counter;
 			}
-			m_test_result.set_text("#%u: '%c'".printf(result, (char)result));
+			if (result == -2)
+				m_test_result.set_text("not recognized");
+			else if (result == -1)
+				m_test_result.set_text("ambiguous: %s".printf(outputs.str));
+			else
+				m_test_result.set_text("#%u: '%c'".printf(result, (char)result));
 		});
 		subgrid.attach(train, 1, 0, 1, 1);
 
@@ -508,7 +522,7 @@ public class MainWindow : Window {
 		m_testing_renderer = new CharacterRenderer(
 			(FontChooser)m_test_font_button,
 			() => {return (unichar)(m_test_charsel.adjustment.value);},
-			64);
+			(int)m_glyph_size.adjustment.value);
 		fixed.put(m_testing_renderer, 0, 0);
 
 		return grid;
