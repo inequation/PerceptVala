@@ -14,7 +14,7 @@ public class CharacterRenderer : Gtk.Misc {
 	private int m_dim;
 	private CharacterDelegate m_char;
 
-	private uchar[] m_pixels;
+	//private uchar[] m_pixels;
 	private ImageSurface m_surf;
 	private Cairo.Context m_ctx;
 	private Pango.Layout m_playout;
@@ -26,10 +26,9 @@ public class CharacterRenderer : Gtk.Misc {
 		set {
 			if (value != m_dim) {
 				height_request = width_request = m_dim = value;
-				int stride = m_dim * 3;
-				m_pixels.resize(stride * m_dim * 2);
-				m_surf = new ImageSurface.for_data(m_pixels, Format.RGB24,
-					m_dim, m_dim, stride);
+				//int stride = m_dim * 3;
+				//m_pixels.resize(stride * m_dim * 2);
+				m_surf = new ImageSurface(Format.RGB24, m_dim, m_dim);
 				m_ctx = new Cairo.Context(m_surf);
 				m_playout = Pango.cairo_create_layout(m_ctx);
 				queue_draw();
@@ -40,7 +39,7 @@ public class CharacterRenderer : Gtk.Misc {
 	public CharacterRenderer(FontChooser fch, CharacterDelegate d, int dim) {
 		m_font_chooser = fch;
 		m_char = d;
-		m_pixels = new uchar[dim];
+		//m_pixels = new uchar[dim];
 		dimension = dim;
 	}
 
@@ -74,6 +73,9 @@ public class CharacterRenderer : Gtk.Misc {
 		cairo_show_layout(ctx, m_playout);
 
 		ctx.restore();
+
+		// make sure the surface pixels are accessible
+		m_surf.flush();
 	}
 
 	public override bool draw (Cairo.Context ctx)
@@ -85,8 +87,7 @@ public class CharacterRenderer : Gtk.Misc {
 	}
 
 	public uint8[] get_pixel(uint x, uint y) {
-		stdout.printf("DUPA %d\n", m_pixels.length);
 		uint offset = (y * m_dim + x) * 3;
-		return m_pixels[offset:offset + 3];
+		return m_surf.get_data()[offset:offset + 3];
 	}
 }
