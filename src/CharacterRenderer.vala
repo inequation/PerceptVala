@@ -13,13 +13,14 @@ public class CharacterRenderer : Gtk.Misc {
 	private FontChooser m_font_chooser;
 	private int m_dim;
 	private CharacterDelegate m_char;
+	private int m_x_jitter;
+	private int m_y_jitter;
+	private int m_noise;
 
 	//private uchar[] m_pixels;
 	private ImageSurface m_surf;
 	private Cairo.Context m_ctx;
 	private Pango.Layout m_playout;
-
-	private uint32 m_seed;
 
 	public int dimension {
 		get { return m_dim; }
@@ -36,11 +37,43 @@ public class CharacterRenderer : Gtk.Misc {
 		}
 	}
 
+	public int x_jitter {
+		get { return m_x_jitter; }
+		set {
+			if (m_x_jitter != value) {
+				m_x_jitter = value;
+				queue_draw();
+			}
+		}
+	}
+
+	public int y_jitter {
+		get { return m_y_jitter; }
+		set {
+			if (m_y_jitter != value) {
+				m_y_jitter = value;
+				queue_draw();
+			}
+		}
+	}
+
+	public int noise {
+		get { return m_noise; }
+		set {
+			if (m_noise != value) {
+				m_noise = value;
+				queue_draw();
+			}
+		}
+	}
+
 	public CharacterRenderer(FontChooser fch, CharacterDelegate d, int dim) {
 		m_font_chooser = fch;
 		m_char = d;
-		//m_pixels = new uchar[dim];
 		dimension = dim;
+		m_x_jitter = 0;
+		m_y_jitter = 0;
+		m_noise = 0;
 	}
 
 	private void render(Cairo.Context ctx) {
@@ -65,14 +98,32 @@ public class CharacterRenderer : Gtk.Misc {
 		m_playout.set_alignment(Pango.Alignment.CENTER);
 		m_playout.set_justify(false);
 
-		int offset = m_dim / 2 - m_playout.get_baseline() / Pango.SCALE / 2;
-		ctx.translate(0, offset);
+		// apply jitter
+		int xoffset = 0;
+		int yoffset = m_dim / 2 - m_playout.get_baseline() / Pango.SCALE / 2;
+		xoffset += m_dim * ((int)Random.next_int() % (2 * m_x_jitter + 1) - m_x_jitter) / 100;
+		yoffset += m_dim * ((int)Random.next_int() % (2 * m_y_jitter + 1) - m_y_jitter) / 100;
+		ctx.translate(xoffset, yoffset);
 
-		m_playout.set_height((int)((m_dim - offset) * Pango.SCALE));
+		m_playout.set_height((int)((m_dim - yoffset) * Pango.SCALE));
 
 		cairo_show_layout(ctx, m_playout);
 
 		ctx.restore();
+
+		// apply noise
+		ctx.set_line_width(1.0);
+		for (int y = 0; y < m_dim; ++y) {
+			for (int x = 0; x < m_dim; ++x) {
+				int val = 255 * ((int)Random.next_int() % (2 * m_noise + 1) - m_noise) / 100;
+				if (val >= 0)
+					ctx.set_source_rgba(1.0, 1.0, 1.0, (double)val / 255.0);
+				else
+					ctx.set_source_rgba(0.0, 0.0, 0.0, (double)(-val) / 255.0);
+				ctx.rectangle(x, y, 1.0, 1.0);
+				ctx.fill();
+			}
+		}
 
 		// make sure the surface pixels are accessible
 		m_surf.flush();

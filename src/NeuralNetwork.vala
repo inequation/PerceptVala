@@ -19,8 +19,12 @@ public class NeuralNetwork {
 	 * creates synapses with random weights between them.
 	 */
 	public void insert_layer(ArrayList<Neuron> layer) {
-		foreach (Neuron n1 in m_top_layer) {
-			foreach (Neuron n2 in layer)
+		foreach (Neuron n2 in layer) {
+			// add the bias neuron first
+			n2.add_synapse({m_bias_neuron,
+				2.0f * (float)Random.next_double() - 1.0f});
+			// add synapses for the lower layer to pull the signal from
+			foreach (Neuron n1 in m_top_layer)
 				n1.add_synapse({n2, 2.0f * (float)Random.next_double() - 1.0f});
 		}
 		m_top_layer = layer;
@@ -47,4 +51,5 @@ public class NeuralNetwork {
 
 	private ArrayList<Neuron> m_outputs;
 	private ArrayList<Neuron> m_top_layer;
+	private static BiasNeuron m_bias_neuron = new BiasNeuron();
 }
