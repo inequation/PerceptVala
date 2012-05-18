@@ -23,9 +23,13 @@ public class NeuralNetwork {
 			// add the bias neuron first
 			n2.add_synapse({m_bias_neuron,
 				2.0f * (float)Random.next_double() - 1.0f});
+			// no reverse synapse for the bias neuron!
 			// add synapses for the lower layer to pull the signal from
-			foreach (Neuron n1 in m_top_layer)
+			foreach (Neuron n1 in m_top_layer) {
 				n1.add_synapse({n2, 2.0f * (float)Random.next_double() - 1.0f});
+				// also add a backward synapse for backprop
+				n2.add_reverse_synapse(n1);
+			}
 		}
 		m_top_layer = layer;
 	}
@@ -39,6 +43,14 @@ public class NeuralNetwork {
 		foreach (Neuron n in m_outputs)
 			results.add(n.get_signal());
 		return results;
+	}
+
+	/**
+	 * Trains the neural network with the given example.
+	 * @param target	array of target weights to descend to
+	 */
+	public void train(ArrayList<float?> target) {
+		var r = run();
 	}
 
 	public ArrayList<Neuron> outputs {

@@ -18,6 +18,10 @@ public class Neuron {
 		m_synapses += s;
 	}
 
+	public void add_reverse_synapse(Neuron n) {
+		m_rev_synapses += n;
+	}
+
 	public virtual float get_signal() {
 		float activation = 0.0f;
 		foreach (Synapse s in m_synapses) {
@@ -29,5 +33,6 @@ public class Neuron {
 	}
 
 	private Synapse[] m_synapses;
+	private Neuron[] m_rev_synapses;
 	private bool m_is_tanh;
 }
