@@ -26,8 +26,6 @@ public class CharacterRenderer : Gtk.Misc {
 		set {
 			if (value != m_dim) {
 				height_request = width_request = m_dim = value;
-				//int stride = m_dim * 3;
-				//m_pixels.resize(stride * m_dim * 2);
 				m_surf = new ImageSurface(Format.RGB24, m_dim, m_dim);
 				m_ctx = new Cairo.Context(m_surf);
 				m_playout = Pango.cairo_create_layout(m_ctx);
@@ -39,7 +37,6 @@ public class CharacterRenderer : Gtk.Misc {
 	public CharacterRenderer(FontChooser fch, CharacterDelegate d, int dim) {
 		m_font_chooser = fch;
 		m_char = d;
-		//m_pixels = new uchar[dim];
 		dimension = dim;
 	}
 
