@@ -380,18 +380,25 @@ public class MainWindow : Window {
 		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
 		m_x_train_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
+		m_x_train_jitter.change_value.connect((scroll, new_value) => {
+			m_training_renderer.x_jitter = (int)m_x_train_jitter.adjustment.value;
+			return false;
+		});
 		grid.attach(m_x_train_jitter, 1, 1, 1, 1);
 
 		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
 		m_y_train_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
+		m_y_train_jitter.change_value.connect((scroll, new_value) => {
+			m_training_renderer.y_jitter = (int)m_y_train_jitter.adjustment.value;
+			return false;
+		});
 		grid.attach(m_y_train_jitter, 1, 2, 1, 1);
 
 		grid.attach(new Label("Preview character code"), 0, 3, 1, 1);
 		m_train_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_train_charsel.width_request = CHARSEL_WIDTH_REQUEST;
-		m_train_charsel.change_value.connect((scroll, new_value)
-			=> {
+		m_train_charsel.change_value.connect((scroll, new_value) => {
 			m_training_renderer.queue_draw();
 			return false;
 		});
@@ -404,9 +411,23 @@ public class MainWindow : Window {
 		subgrid.row_homogeneous = false;
 
 		var rand = new Button.with_label("Re-randomize");
+		rand.clicked.connect(() => {
+			m_training_renderer.queue_draw();
+		});
 		subgrid.attach(rand, 0, 0, 1, 1);
 
 		var train = new Button.from_stock(Gtk.Stock.OK);
+		train.clicked.connect(() => {
+			if (m_network == null) {
+				var msgbox = new MessageDialog(this,
+					DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+					MessageType.INFO, ButtonsType.OK,
+					"A network needs to be built first using the setup tab.");
+				msgbox.run();
+				msgbox.destroy();
+				return;
+			}
+		});
 		subgrid.attach(train, 1, 0, 1, 1);
 
 		grid.attach(subgrid, 0, 5, 1, 1);
@@ -443,22 +464,33 @@ public class MainWindow : Window {
 		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
 		m_x_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
+		m_x_test_jitter.change_value.connect((scroll, new_value) => {
+			m_testing_renderer.x_jitter = (int)m_x_test_jitter.adjustment.value;
+			return false;
+		});
 		grid.attach(m_x_test_jitter, 1, 1, 1, 1);
 
 		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
 		m_y_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
+		m_y_test_jitter.change_value.connect((scroll, new_value) => {
+			m_testing_renderer.y_jitter = (int)m_y_test_jitter.adjustment.value;
+			return false;
+		});
 		grid.attach(m_y_test_jitter, 1, 2, 1, 1);
 
 		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
 		m_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
+		m_noise.change_value.connect((scroll, new_value) => {
+			m_testing_renderer.noise = (int)m_noise.adjustment.value;
+			return false;
+		});
 		grid.attach(m_noise, 1, 3, 1, 1);
 
 		grid.attach(new Label("Character code"), 0, 4, 1, 1);
 		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
-		m_test_charsel.change_value.connect((scroll, new_value)
-			=> {
+		m_test_charsel.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.queue_draw();
 			return false;
 		});
@@ -475,10 +507,13 @@ public class MainWindow : Window {
 		subgrid.row_homogeneous = false;
 
 		var rand = new Button.with_label("Re-randomize");
+		rand.clicked.connect(() => {
+			m_testing_renderer.queue_draw();
+		});
 		subgrid.attach(rand, 0, 0, 1, 1);
 
-		var train = new Button.from_stock(Gtk.Stock.OK);
-		train.clicked.connect(() => {
+		var test = new Button.from_stock(Gtk.Stock.OK);
+		test.clicked.connect(() => {
 			if (m_network == null) {
 				var msgbox = new MessageDialog(this,
 					DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
@@ -491,7 +526,8 @@ public class MainWindow : Window {
 			stdout.printf("Running network...");
 			var net_output = m_network.run();
 			stdout.printf("done.\n");
-			int counter = 0, result = -2;
+			int counter = 0;
+			int result = -2;
 			var outputs = new StringBuilder();
 			foreach (float activation in net_output) {
 				if (activation >= 1.0f) {
@@ -512,7 +548,7 @@ public class MainWindow : Window {
 			else
 				m_test_result.set_text("#%u: '%c'".printf(result, (char)result));
 		});
-		subgrid.attach(train, 1, 0, 1, 1);
+		subgrid.attach(test, 1, 0, 1, 1);
 
 		grid.attach(subgrid, 0, 7, 1, 1);
 
