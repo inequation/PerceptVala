@@ -48,5 +48,5 @@ debug:
 	$(MKDIR_P) $(DEBUG_DIST_DIR)
 	mv perceptvala $(DEBUG_DIST_DIR)
 
-perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala
-	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala
+perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala TrainingDialog.vala
+	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala TrainingDialog.vala

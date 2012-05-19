@@ -37,6 +37,7 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="BiasNeuron.vala" />
 		<Unit filename="CharacterRenderer.vala" />
 		<Unit filename="ImagePixel.vala">
 			<Option target="debug" />
@@ -59,6 +60,7 @@
 			<Option target="debug" />
 			<Option target="release" />
 		</Unit>
+		<Unit filename="TrainingDialog.vala" />
 		<Extensions>
 			<code_completion />
 			<envvars />
