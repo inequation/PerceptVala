@@ -43,6 +43,12 @@ public class MainWindow : Window {
 	private Scale m_test_charsel;
 	private Label m_test_result;
 
+	// training dialog widgets
+	private SpinButton m_rate;
+	private SpinButton m_cycles;
+	private RadioButton m_random;
+	private RadioButton m_sequential;
+
 	public NeuralNetwork? m_network;
 
 	private enum ViewColumn {
@@ -52,6 +58,7 @@ public class MainWindow : Window {
 	}
 
 	private static const int CHARSEL_WIDTH_REQUEST = 256 * 2;
+	private static const int TICK_UPDATE_FREQUENCY = 10;
 
 	public MainWindow() {
 		title = "PerceptVala";
@@ -61,6 +68,7 @@ public class MainWindow : Window {
 		destroy.connect(Gtk.main_quit);
 
 		m_network = null;
+		m_rate = null;
 
 		m_notebook = new Notebook();
 
@@ -92,6 +100,9 @@ public class MainWindow : Window {
 			foreach (ImagePixel i in m_network.inputs)
 				i.image = r;
 		});
+
+		m_start_output.changed();
+		m_end_output.changed();
 
 		add(m_notebook);
 	}
@@ -139,12 +150,20 @@ public class MainWindow : Window {
 				m_end_output.active = m_start_output.active;
 			m_net_model.set_value(m_output_layer, ViewColumn.SIZE,
 				(int)(m_end_output.active - m_start_output.active + 1));
+			m_train_charsel.set_range(32 + m_start_output.active,
+				m_train_charsel.adjustment.upper);
+			m_test_charsel.set_range(32 + m_start_output.active,
+				m_test_charsel.adjustment.upper);
 		});
 		m_end_output.changed.connect(() => {
 			if (m_start_output.active >= m_end_output.active)
 				m_start_output.active = m_end_output.active;
 			m_net_model.set_value(m_output_layer, ViewColumn.SIZE,
 				(int)(m_end_output.active - m_start_output.active + 1));
+			m_train_charsel.set_range(m_train_charsel.adjustment.lower,
+				32 + m_end_output.active);
+			m_test_charsel.set_range(m_test_charsel.adjustment.lower,
+				32 + m_end_output.active);
 		});
 
 		m_net_model = new ListStore(3,
@@ -395,14 +414,33 @@ public class MainWindow : Window {
 		});
 		grid.attach(m_y_train_jitter, 1, 2, 1, 1);
 
-		grid.attach(new Label("Preview character code"), 0, 3, 1, 1);
+		grid.attach(new Label("Learning rate"), 0, 3, 1, 1);
+		m_rate = new SpinButton.with_range(0.00001, 1.0, 0.00001);
+		m_rate.adjustment.value = 0.005;
+		grid.attach(m_rate, 1, 3, 1, 1);
+
+		grid.attach(new Label("Number of cycles"), 0, 4, 1, 1);
+		m_cycles = new SpinButton.with_range(1, 9999999, 1);
+		m_cycles.adjustment.value = 3000;
+		grid.attach(m_cycles, 1, 4, 1, 1);
+
+		grid.attach(new Label("Example order"), 0, 5, 1, 2);
+		m_random = new RadioButton.with_label(null, "Random");
+		m_sequential = new RadioButton.with_label_from_widget(m_random,
+			"Sequential");
+		m_random.active = true;
+		grid.attach(m_random, 1, 5, 1, 1);
+		grid.attach(m_sequential, 1, 6, 1, 1);
+
+		grid.attach(new Label("Preview character code"), 0, 8, 1, 1);
 		m_train_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_train_charsel.width_request = CHARSEL_WIDTH_REQUEST;
+		m_train_charsel.set_increments(1, 10);
 		m_train_charsel.change_value.connect((scroll, new_value) => {
 			m_training_renderer.queue_draw();
 			return false;
 		});
-		grid.attach(m_train_charsel, 0, 4, 1, 1);
+		grid.attach(m_train_charsel, 0, 9, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -427,13 +465,81 @@ public class MainWindow : Window {
 				msgbox.destroy();
 				return;
 			}
+
+			var td = new Dialog.with_buttons("Network training progress", this,
+				DialogFlags.MODAL);
+			td.has_resize_grip = false;
+			td.deletable = false;
+			var contents = td.get_content_area();
+
+			var progbar = new ProgressBar();
+			progbar.sensitive = false;
+			progbar.width_request = 320;
+			progbar.height_request = 20;
+			progbar.show_text = true;
+			contents.add(progbar);
+
+			td.show_all();
+
+			GLib.Value val;
+			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
+			int examples = val.get_int();
+			int cycles = (int)m_cycles.adjustment.value;
+			int ticks = examples * cycles;
+
+			var target = new ArrayList<float?>();
+			for (int e = 0; e < examples; ++e)
+				target.add(0.0f);
+
+			for (int c = 0; c < cycles; ++c) {
+				// define an example iteration order, random or sequential
+				ArrayList<int> order = new ArrayList<int>();
+				if (m_sequential.active) {
+					for (int e = 0; e < examples; ++e)
+						order.add(e);
+				} else {
+					var pool = new LinkedList<int>();
+					for (int e = 0; e < examples; ++e)
+						pool.add(e);
+					while (pool.size > 0) {
+						int i = (int)(Random.next_int() % pool.size);
+						order.add(pool[i]);
+						pool.remove_at(i);
+					}
+				}
+
+				for (int e = 0; e < examples; ++e) {
+					// update progress bar
+					int tick = c * examples + e;
+					double frac = (double)tick / (double)ticks;
+					progbar.fraction = frac;
+					progbar.text = "%.0f%%".printf(frac * 100.0);
+					if (tick % TICK_UPDATE_FREQUENCY == 0)
+						main_iteration_do(false);
+
+					int t = order[e];
+					// pick a character and render
+					m_train_charsel.change_value(ScrollType.JUMP,
+						32 + m_start_output.active + t);
+					m_training_renderer.render();
+
+					// set new target and learn, then reset the target array
+					target.set(t, 1.0f);
+					stdout.printf("Training for %d at %f\n",
+						(32 + m_start_output.active + t), m_rate.value);
+					m_network.train((float)m_rate.value, target);
+					target.set(t, 0.0f);
+				}
+			}
+
+			td.destroy();
 		});
 		subgrid.attach(train, 1, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 5, 1, 1);
+		grid.attach(subgrid, 0, 10, 1, 1);
 
 		var fixed = new Fixed();
-		grid.attach(fixed, 1, 3, 1, 2);
+		grid.attach(fixed, 1, 8, 1, 2);
 
 		m_training_renderer = new CharacterRenderer(
 			(FontChooser)m_train_font_button,
@@ -490,6 +596,7 @@ public class MainWindow : Window {
 		grid.attach(new Label("Character code"), 0, 4, 1, 1);
 		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
+		m_test_charsel.set_increments(1, 10);
 		m_test_charsel.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.queue_draw();
 			return false;
@@ -546,7 +653,8 @@ public class MainWindow : Window {
 			else if (result == -1)
 				m_test_result.set_text("ambiguous: %s".printf(outputs.str));
 			else
-				m_test_result.set_text("#%u: '%c'".printf(result, (char)result));
+				m_test_result.set_text("#%u: '%c'".printf(result,
+					(char)(32 + m_start_output.active + result)));
 		});
 		subgrid.attach(test, 1, 0, 1, 1);
 

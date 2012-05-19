@@ -76,22 +76,22 @@ public class CharacterRenderer : Gtk.Misc {
 		m_noise = 0;
 	}
 
-	private void render(Cairo.Context ctx) {
-		ctx.save();
+	public void render() {
+		m_ctx.save();
 
 		m_playout.set_font_description(m_font_chooser.get_font_desc());
 		m_playout.set_markup(m_char().to_string(), -1);
 
-		ctx.set_source_rgb(1, 1, 1);
-		ctx.paint();
+		m_ctx.set_source_rgb(1, 1, 1);
+		m_ctx.paint();
 
 		// bounds debugging
-		/*ctx.set_source_rgba(0, 1, 0, 0.7);
-		ctx.set_line_width (1);
-		ctx.rectangle(0, 0, m_dim - 1, m_dim - 1);
-		ctx.stroke();*/
+		/*m_ctx.set_source_rgba(0, 1, 0, 0.7);
+		m_ctx.set_line_width (1);
+		m_ctx.rectangle(0, 0, m_dim - 1, m_dim - 1);
+		m_ctx.stroke();*/
 
-		ctx.set_source_rgb(0, 0, 0);
+		m_ctx.set_source_rgb(0, 0, 0);
 
 		m_playout.set_width((int)(m_dim * Pango.SCALE) );
 		m_playout.set_ellipsize(Pango.EllipsizeMode.MIDDLE);
@@ -103,27 +103,27 @@ public class CharacterRenderer : Gtk.Misc {
 		int yoffset = m_dim / 2 - m_playout.get_baseline() / Pango.SCALE / 2;
 		xoffset += m_dim * ((int)Random.next_int() % (2 * m_x_jitter + 1) - m_x_jitter) / 100;
 		yoffset += m_dim * ((int)Random.next_int() % (2 * m_y_jitter + 1) - m_y_jitter) / 100;
-		ctx.translate(xoffset, yoffset);
+		m_ctx.translate(xoffset, yoffset);
 
 		m_playout.set_height((int)((m_dim - yoffset) * Pango.SCALE));
 
-		cairo_show_layout(ctx, m_playout);
-
-		ctx.restore();
+		cairo_show_layout(m_ctx, m_playout);
 
 		// apply noise
-		ctx.set_line_width(1.0);
+		m_ctx.set_line_width(1.0);
 		for (int y = 0; y < m_dim; ++y) {
 			for (int x = 0; x < m_dim; ++x) {
 				int val = 255 * ((int)Random.next_int() % (2 * m_noise + 1) - m_noise) / 100;
 				if (val >= 0)
-					ctx.set_source_rgba(1.0, 1.0, 1.0, (double)val / 255.0);
+					m_ctx.set_source_rgba(1.0, 1.0, 1.0, (double)val / 255.0);
 				else
-					ctx.set_source_rgba(0.0, 0.0, 0.0, (double)(-val) / 255.0);
-				ctx.rectangle(x, y, 1.0, 1.0);
-				ctx.fill();
+					m_ctx.set_source_rgba(0.0, 0.0, 0.0, (double)(-val) / 255.0);
+				m_ctx.rectangle(x, y, 1.0, 1.0);
+				m_ctx.fill();
 			}
 		}
+
+		m_ctx.restore();
 
 		// make sure the surface pixels are accessible
 		m_surf.flush();
@@ -131,7 +131,7 @@ public class CharacterRenderer : Gtk.Misc {
 
 	public override bool draw (Cairo.Context ctx)
 	{
-		render(m_ctx);
+		render();
 		ctx.set_source_surface(m_surf, 0, 0);
 		ctx.paint();
 		return false;
