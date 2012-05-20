@@ -48,6 +48,10 @@ public class MainWindow : Window {
 	private SpinButton m_cycles;
 	private RadioButton m_random;
 	private RadioButton m_sequential;
+	private bool m_break_training;
+
+	// testing dialog widgets
+	private bool m_break_testing;
 
 	public NeuralNetwork? m_network;
 
@@ -58,7 +62,7 @@ public class MainWindow : Window {
 	}
 
 	private static const int CHARSEL_WIDTH_REQUEST = 256 * 2;
-	private static const int TICK_UPDATE_FREQUENCY = 10;
+	private static const int TICK_UPDATE_FREQUENCY = 50;
 
 	public MainWindow() {
 		title = "PerceptVala";
@@ -456,21 +460,15 @@ public class MainWindow : Window {
 
 		var train = new Button.from_stock(Gtk.Stock.OK);
 		train.clicked.connect(() => {
-			if (m_network == null) {
-				var msgbox = new MessageDialog(this,
-					DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
-					MessageType.INFO, ButtonsType.OK,
-					"A network needs to be built first using the setup tab.");
-				msgbox.run();
-				msgbox.destroy();
+			if (!is_network_ready())
 				return;
-			}
 
 			var td = new Dialog.with_buttons("Network training progress", this,
 				DialogFlags.MODAL);
 			td.has_resize_grip = false;
 			td.deletable = false;
 			var contents = td.get_content_area();
+			Container buttons = (Container)td.get_action_area();
 
 			var progbar = new ProgressBar();
 			progbar.sensitive = false;
@@ -479,7 +477,13 @@ public class MainWindow : Window {
 			progbar.show_text = true;
 			contents.add(progbar);
 
+			var btn = new Button.from_stock(Stock.CANCEL);
+			btn.clicked.connect(() => { m_break_training = true; });
+			buttons.add(btn);
+
 			td.show_all();
+
+			m_break_training = false;
 
 			GLib.Value val;
 			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
@@ -492,7 +496,13 @@ public class MainWindow : Window {
 				target.add(0.0f);
 
 			for (int c = 0; c < cycles; ++c) {
-				// define an example iteration order, random or sequential
+				// stop if user clicked cancel
+				if (m_break_training)
+					break;
+
+				stdout.printf("Training cycle #%d at rate %f\n", c, m_rate.value);
+
+				// define an example visiting order, random or sequential
 				ArrayList<int> order = new ArrayList<int>();
 				if (m_sequential.active) {
 					for (int e = 0; e < examples; ++e)
@@ -509,6 +519,10 @@ public class MainWindow : Window {
 				}
 
 				for (int e = 0; e < examples; ++e) {
+					// stop if user clicked cancel
+					if (m_break_training)
+						break;
+
 					// update progress bar
 					int tick = c * examples + e;
 					double frac = (double)tick / (double)ticks;
@@ -525,8 +539,6 @@ public class MainWindow : Window {
 
 					// set new target and learn, then reset the target array
 					target.set(t, 1.0f);
-					stdout.printf("Training for %d at %f\n",
-						(32 + m_start_output.active + t), m_rate.value);
 					m_network.train((float)m_rate.value, target);
 					target.set(t, 0.0f);
 				}
@@ -598,7 +610,7 @@ public class MainWindow : Window {
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_test_charsel.set_increments(1, 10);
 		m_test_charsel.change_value.connect((scroll, new_value) => {
-			m_testing_renderer.queue_draw();
+			test_current_character();
 			return false;
 		});
 		grid.attach(m_test_charsel, 0, 5, 1, 1);
@@ -614,47 +626,101 @@ public class MainWindow : Window {
 		subgrid.row_homogeneous = false;
 
 		var rand = new Button.with_label("Re-randomize");
-		rand.clicked.connect(() => {
-			m_testing_renderer.queue_draw();
-		});
+		rand.clicked.connect(test_current_character);
 		subgrid.attach(rand, 0, 0, 1, 1);
 
 		var test = new Button.from_stock(Gtk.Stock.OK);
 		test.clicked.connect(() => {
-			if (m_network == null) {
-				var msgbox = new MessageDialog(this,
-					DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
-					MessageType.INFO, ButtonsType.OK,
-					"A network needs to be built first using the setup tab.");
-				msgbox.run();
-				msgbox.destroy();
+			if (!is_network_ready())
 				return;
+
+			var td = new Dialog.with_buttons("Network test progress", this,
+				DialogFlags.MODAL);
+			td.has_resize_grip = false;
+			td.deletable = false;
+			var contents = td.get_content_area();
+			Container buttons = (Container)td.get_action_area();
+
+			var progbar = new ProgressBar();
+			progbar.sensitive = false;
+			progbar.width_request = 320;
+			progbar.height_request = 20;
+			progbar.show_text = true;
+			contents.add(progbar);
+
+			var tgrid = new Grid();
+			tgrid.column_spacing = 5;
+			tgrid.row_spacing = 5;
+			tgrid.column_homogeneous = false;
+			tgrid.row_homogeneous = false;
+
+			tgrid.attach(new Label("Unrecognized:"), 0, 0, 1, 1);
+			var unrec_label = new Label("0");
+			tgrid.attach(unrec_label, 1, 0, 1, 1);
+			tgrid.attach(new Label("Recognized:"), 0, 1, 1, 1);
+			var rec_label = new Label("0");
+			tgrid.attach(rec_label, 1, 1, 1, 1);
+			tgrid.attach(new Label("Ambiguous:"), 0, 2, 1, 1);
+			var ambig_label = new Label("0");
+			tgrid.attach(ambig_label, 1, 2, 1, 1);
+			contents.add(tgrid);
+
+			var cancel = new Button.from_stock(Stock.CANCEL);
+			cancel.clicked.connect(() => { m_break_testing = true; });
+			buttons.add(cancel);
+
+			td.show_all();
+
+			m_break_testing = false;
+
+			GLib.Value val;
+			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
+			int examples = val.get_int();
+			int unrec = 0;
+			int rec = 0;
+			int ambig = 0;
+
+			for (int e = 0; e < examples; ++e) {
+				// stop if user clicked cancel
+				if (m_break_testing)
+					break;
+
+				double frac = (double)e / (double)examples;
+				progbar.fraction = frac;
+				progbar.text = "%.0f%%".printf(frac * 100.0);
+				if (e % TICK_UPDATE_FREQUENCY == 0)
+					main_iteration_do(false);
+
+				// pick a character and render
+				m_test_charsel.change_value(ScrollType.JUMP,
+					32 + m_start_output.active + e);
+				m_testing_renderer.render();
+
+				int result = run_network(null);
+				switch (result) {
+					case -2:	unrec_label.label = "%d".printf(++unrec); break;
+					case -1:	ambig_label.label = "%d".printf(++ambig); break;
+					default:	rec_label.label = "%d".printf(++rec); break;
+				}
 			}
-			stdout.printf("Running network...");
-			var net_output = m_network.run();
-			stdout.printf("done.\n");
-			int counter = 0;
-			int result = -2;
-			var outputs = new StringBuilder();
-			foreach (float activation in net_output) {
-				if (activation >= 1.0f) {
-					outputs.append("1");
-					if (result == -2)
-						result = counter;
-					else
-						// ambiguous
-						result = -1;
-				} else
-					outputs.append("0");
-				++counter;
-			}
-			if (result == -2)
-				m_test_result.set_text("not recognized");
-			else if (result == -1)
-				m_test_result.set_text("ambiguous: %s".printf(outputs.str));
-			else
-				m_test_result.set_text("#%u: '%c'".printf(result,
-					(char)(32 + m_start_output.active + result)));
+
+			// display percentage statistics
+			progbar.fraction = 1.0;
+			progbar.text = "100%";
+			unrec_label.label = "%d/%d (%.1f%%)".printf(unrec, examples,
+				100.0f * (float)unrec / (float)examples);
+			ambig_label.label = "%d/%d (%.1f%%)".printf(ambig, examples,
+				100.0f * (float)ambig / (float)examples);
+			rec_label.label = "%d/%d (%.1f%%)".printf(rec, examples,
+				100.0f * (float)rec / (float)examples);
+
+			// set dialog to dismissable
+			buttons.remove(cancel);
+			td.deletable = true;
+			td.add_action_widget(new Button.from_stock(Stock.OK), 0);
+			td.show_all();
+			td.run();
+			td.destroy();
 		});
 		subgrid.attach(test, 1, 0, 1, 1);
 
@@ -670,5 +736,66 @@ public class MainWindow : Window {
 		fixed.put(m_testing_renderer, 0, 0);
 
 		return grid;
+	}
+
+	private bool is_network_ready() {
+		if (m_network == null) {
+			var msgbox = new MessageDialog(this,
+				DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+				MessageType.INFO, ButtonsType.OK,
+				"A network needs to be built first using the setup tab.");
+			msgbox.run();
+			msgbox.destroy();
+			m_notebook.page = 0;
+			return false;
+		}
+		return true;
+	}
+
+	private void test_current_character() {
+		if (!is_network_ready())
+			return;
+
+		m_testing_renderer.queue_draw();
+		main_iteration_do(false);
+
+		string outputs;
+		int result = run_network(out outputs);
+		switch (result) {
+			case -2:
+				m_test_result.set_text("not recognized");
+				break;
+			case -1:
+				m_test_result.set_text("ambiguous: %s".printf(outputs));
+				break;
+			default:
+				m_test_result.set_text("#%u: '%c'".printf(result,
+					(char)(32 + m_start_output.active + result)));
+				break;
+		}
+	}
+
+	private int run_network(out string outputs_str) {
+		stdout.printf("Running network...");
+		var net_output = m_network.run();
+		stdout.printf("done.\n");
+		int counter = 0;
+		int result = -2;
+		var outputs = new StringBuilder();
+		foreach (float activation in net_output) {
+			if (activation >= 1.0f) {
+				outputs.append("1");
+				if (result == -2)
+					result = counter;
+				else
+					// ambiguous
+					result = -1;
+			} else
+				outputs.append("0");
+			++counter;
+		}
+		if (outputs_str != null)
+			outputs_str = outputs.str;
+		return result;
 	}
 }
