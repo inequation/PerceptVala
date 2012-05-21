@@ -44,9 +44,13 @@ release:
 
 # recursively call make with proper flags
 debug:
-	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) -g --save-temps"
+	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) -g --save-temps -D DEBUG"
 	$(MKDIR_P) $(DEBUG_DIST_DIR)
 	mv perceptvala $(DEBUG_DIST_DIR)
+
+# recursively call make with proper flags
+debug-verbose:
+	$(MAKE) debug VALACFLAGS="$(VALACFLAGS) -D VERBOSE"
 
 perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala
 	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala

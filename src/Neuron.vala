@@ -4,6 +4,10 @@ Written by Leszek Godlewski <github@inequation.org>
 */
 
 public class Neuron {
+#if DEBUG
+	private static const float ACTIVATION_DANGER_THRESHOLD = 10.0f;
+#endif
+
 	/** Neuron connection. */
 	public class Synapse {
 		public Neuron post;
@@ -27,10 +31,31 @@ public class Neuron {
 
 	public virtual float get_signal() {
 		float activation = 0.0f;
+#if DEBUG
+		int i = 0;
+		float last_activation = activation;
+#endif
 		foreach (Synapse s in m_synapses) {
-			activation += s.weight *
-				(m_is_tanh ? (float)Math.tanh(s.ant.get_signal())
-					: s.ant.get_signal());
+			if (s.ant == this)
+				continue;
+			float sgnl = s.ant.get_signal();
+			if (m_is_tanh)
+				sgnl = Math.tanhf(sgnl);
+			activation += s.weight * sgnl;
+#if DEBUG
+			// FIXME: report bug that is_infinity() returns int?
+			if (Math.fabsf(activation) > ACTIVATION_DANGER_THRESHOLD
+				|| activation.is_nan() || (bool)activation.is_infinity()) {
+				if (!last_activation.is_nan()
+					&& !(bool)last_activation.is_infinity()) {
+					stdout.printf("get_signal(): Activation became %f in "
+						+ "synapse #%d after %f + w = %f * s = %f\n",
+						activation, i, last_activation, s.weight, sgnl);
+				}
+			}
+			last_activation = activation;
+			++i;
+#endif
 		}
 		return activation;
 	}
@@ -42,26 +67,75 @@ public class Neuron {
 			return 1.0f - y * y;
 		}
 		float activation = 0.0f;
+#if DEBUG
+		int i = 0;
+		float last_activation = activation;
+#endif
 		foreach (Synapse s in m_synapses) {
-			if (!s.ant.is_bias_neuron())
+			if (s.ant == this)
+				continue;
+			if (!s.ant.is_bias_neuron()) {
 				activation += s.weight;
+#if DEBUG
+				// FIXME: report bug that is_infinity() returns int?
+				if (Math.fabsf(activation) > ACTIVATION_DANGER_THRESHOLD
+					|| activation.is_nan() || (bool)activation.is_infinity()) {
+					if (!last_activation.is_nan()
+						&& !(bool)last_activation.is_infinity()) {
+						stdout.printf("get_signal_derivative(): Activation "
+							+ "became %f in synapse #%d after %f + w = %f\n",
+							activation, i, last_activation, s.weight);
+					}
+				}
+				last_activation = activation;
+				++i;
+#endif
+			}
 		}
 		return activation;
 	}
 
 	public float get_signal_error() {
 		float activation = 0.0f;
+#if DEBUG
+		int i = 0;
+		float last_activation = activation;
+#endif
 		foreach (Synapse s in m_synapses) {
-			if (!s.post.is_bias_neuron())
+			if (s.post == this)
+				continue;
+			if (!s.post.is_bias_neuron()) {
 				activation += s.weight * s.post.error;
+#if DEBUG
+				// FIXME: report bug that is_infinity() returns int?
+				if (Math.fabsf(activation) > ACTIVATION_DANGER_THRESHOLD
+					|| activation.is_nan() || (bool)activation.is_infinity()) {
+					if (!last_activation.is_nan()
+						&& !(bool)last_activation.is_infinity()) {
+						stdout.printf("get_signal_error(): Activation became "
+							+ "%f in synapse #%d after %f + w = %f * e = %f\n",
+							activation, i, last_activation, s.weight,
+							s.post.error);
+					}
+				}
+				last_activation = activation;
+				++i;
+#endif
+			}
 		}
 		return activation;
 	}
 
 	public void update_weights(float rate) {
-		foreach (Synapse s in m_synapses)
+		foreach (Synapse s in m_synapses) {
+			if (s.ant == this)
+				continue;
 			s.weight += rate * error * s.ant.get_signal();
+		}
 	}
+
+	public Synapse[] synapses { get { return m_synapses; } }
+	public bool is_tanh { get { return m_is_tanh; } }
 
 	public virtual bool is_bias_neuron() { return false; }
 
