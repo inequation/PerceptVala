@@ -22,8 +22,8 @@ public class MainWindow : Window {
 	private ListStore m_net_model;
 	private TreeIter m_input_layer;
 	private TreeIter m_output_layer;
-	private Scale m_glyph_size;
-	private Scale m_layer_size;
+	private SpinButton m_glyph_size;
+	private SpinButton m_layer_size;
 	private ComboBoxText m_start_output;
 	private ComboBoxText m_end_output;
 
@@ -62,7 +62,7 @@ public class MainWindow : Window {
 	}
 
 	private static const int CHARSEL_WIDTH_REQUEST = 256 * 2;
-	private static const int TICK_UPDATE_FREQUENCY = 50;
+	private static const int TICK_UPDATE_FREQUENCY = 2;
 
 	public MainWindow() {
 		title = "PerceptVala";
@@ -90,6 +90,11 @@ public class MainWindow : Window {
 		var testing_label = new Label("Testing");
 		var testing_page = create_testing_page();
 		m_notebook.append_page(testing_page, testing_label);
+
+		// create the about tab
+		var about_label = new Label("About");
+		var about_page = create_about_page();
+		m_notebook.append_page(about_page, about_label);
 
 		m_notebook.switch_page.connect((page, page_num) => {
 			if (m_network == null)
@@ -120,16 +125,14 @@ public class MainWindow : Window {
 		grid.row_homogeneous = false;
 
 		grid.attach(new Label("Glyph size"), 0, 0, 1, 1);
-		m_glyph_size = new Scale.with_range(Orientation.HORIZONTAL, 8, 128, 1);
-		m_glyph_size.adjustment.value = 16;
-		m_glyph_size.change_value.connect((scroll, new_value)
-			=> {
+		m_glyph_size = new SpinButton.with_range(8, 128, 1);
+		m_glyph_size.adjustment.value = 8;
+		m_glyph_size.value_changed.connect(() => {
 			m_net_model.set_value(m_input_layer, ViewColumn.SIZE,
 				(int)(m_glyph_size.adjustment.value
 					* m_glyph_size.adjustment.value));
 			m_training_renderer.dimension = m_testing_renderer.dimension =
 				(int)(m_glyph_size.adjustment.value);
-			return false;
 		});
 		grid.attach(m_glyph_size, 1, 0, 1, 1);
 
@@ -261,17 +264,15 @@ public class MainWindow : Window {
 		});
 
 		subgrid.attach(new Label("Layer size"), 0, 2, 1, 1);
-		m_layer_size = new Scale.with_range(Orientation.HORIZONTAL, 1,
-			2 * m_glyph_size.adjustment.upper * m_glyph_size.adjustment.upper,
-			1);
+		m_layer_size = new SpinButton.with_range(1,
+			m_glyph_size.adjustment.upper * m_glyph_size.adjustment.upper, 1);
 		subgrid.attach(m_layer_size, 1, 2, 3, 1);
-		m_layer_size.change_value.connect((scroll, new_value) => {
+		m_layer_size.value_changed.connect(() => {
 			TreeIter? it;
 			m_view.get_selection().get_selected(null, out it);
 			if (it != null && it != m_input_layer && it != m_output_layer)
 				m_net_model.set_value(it, ViewColumn.SIZE,
 					(int)m_layer_size.adjustment.value);
-			return false;
 		});
 
 		var filler = new Label(" ");
@@ -395,6 +396,9 @@ public class MainWindow : Window {
 		m_train_font_button = new FontButton();
 		m_train_font_button.use_font = true;
 		m_train_font_button.use_size = true;
+		var fd = m_train_font_button.font_desc.copy();
+		fd.set_size(7 * 1024);
+		m_train_font_button.font_desc = fd;
 		m_train_font_button.font_set.connect(() => {
 			m_training_renderer.queue_draw();
 		});
@@ -470,18 +474,28 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var progbar = new ProgressBar();
-			progbar.sensitive = false;
-			progbar.width_request = 320;
-			progbar.height_request = 20;
-			progbar.show_text = true;
-			contents.add(progbar);
+			var total_progbar = new ProgressBar();
+			total_progbar.width_request = 320;
+			total_progbar.height_request = 20;
+			total_progbar.show_text = true;
+			total_progbar.text = "Total: 0%";
+			contents.add(total_progbar);
+
+			var cycle_progbar = new ProgressBar();
+			cycle_progbar.width_request = 320;
+			cycle_progbar.height_request = 20;
+			cycle_progbar.show_text = true;
+			total_progbar.text = "Cycle: 0%";
+			contents.add(cycle_progbar);
 
 			var btn = new Button.from_stock(Stock.CANCEL);
 			btn.clicked.connect(() => { m_break_training = true; });
 			buttons.add(btn);
 
 			td.show_all();
+			// make sure the window pops up
+			for (int i = 0; i < 10; ++i)
+				main_iteration_do(false);
 
 			m_break_training = false;
 
@@ -525,11 +539,16 @@ public class MainWindow : Window {
 
 					// update progress bar
 					int tick = c * examples + e;
-					double frac = (double)tick / (double)ticks;
-					progbar.fraction = frac;
-					progbar.text = "%.0f%%".printf(frac * 100.0);
-					if (tick % TICK_UPDATE_FREQUENCY == 0)
-						main_iteration_do(false);
+					if (tick % TICK_UPDATE_FREQUENCY == 0) {
+						double frac = (double)tick / (double)ticks;
+						total_progbar.fraction = frac;
+						total_progbar.text = "Total: %.0f%%".printf(frac * 100.0);
+						frac = (double)e / (double)examples;
+						cycle_progbar.fraction = frac;
+						cycle_progbar.text = "Cycle: %.0f%%".printf(frac * 100.0);
+						for (int i = 0; i < 10; ++i)
+							main_iteration_do(false);
+					}
 
 					int t = order[e];
 					// pick a character and render
@@ -570,42 +589,45 @@ public class MainWindow : Window {
 		grid.column_homogeneous = false;
 		grid.row_homogeneous = false;
 
-		grid.attach(new Label("Font"), 0, 0, 1, 1);
+		grid.attach(new Label("Font"), 0, 0, 2, 1);
 		m_test_font_button = new FontButton();
 		m_test_font_button.use_font = true;
 		m_test_font_button.use_size = true;
+		var fd = m_test_font_button.font_desc.copy();
+		fd.set_size(7 * 1024);
+		m_test_font_button.font_desc = fd;
 		m_test_font_button.font_set.connect(() => {
 			m_testing_renderer.queue_draw();
 		});
-		grid.attach(m_test_font_button, 1, 0, 1, 1);
+		grid.attach(m_test_font_button, 2, 0, 1, 1);
 
-		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
+		grid.attach(new Label("X jitter [%]"), 0, 1, 2, 1);
 		m_x_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_x_test_jitter.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.x_jitter = (int)m_x_test_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_x_test_jitter, 1, 1, 1, 1);
+		grid.attach(m_x_test_jitter, 2, 1, 1, 1);
 
-		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
+		grid.attach(new Label("Y jitter [%]"), 0, 2, 2, 1);
 		m_y_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_y_test_jitter.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.y_jitter = (int)m_y_test_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_y_test_jitter, 1, 2, 1, 1);
+		grid.attach(m_y_test_jitter, 2, 2, 1, 1);
 
-		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
+		grid.attach(new Label("Noise level [%]"), 0, 3, 2, 1);
 		m_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
 		m_noise.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.noise = (int)m_noise.adjustment.value;
 			return false;
 		});
-		grid.attach(m_noise, 1, 3, 1, 1);
+		grid.attach(m_noise, 2, 3, 1, 1);
 
-		grid.attach(new Label("Character code"), 0, 4, 1, 1);
+		grid.attach(new Label("Character code"), 0, 4, 2, 1);
 		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_test_charsel.set_increments(1, 10);
@@ -613,11 +635,11 @@ public class MainWindow : Window {
 			test_current_character();
 			return false;
 		});
-		grid.attach(m_test_charsel, 0, 5, 1, 1);
+		grid.attach(m_test_charsel, 2, 5, 1, 1);
 
-		grid.attach(new Label("Recognized character"), 0, 6, 1, 1);
+		grid.attach(new Label("Recognized character"), 0, 6, 2, 1);
 		m_test_result = new Label(" ");
-		grid.attach(m_test_result, 1, 6, 1, 1);
+		grid.attach(m_test_result, 2, 6, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -628,6 +650,23 @@ public class MainWindow : Window {
 		var rand = new Button.with_label("Re-randomize");
 		rand.clicked.connect(test_current_character);
 		subgrid.attach(rand, 0, 0, 1, 1);
+
+		var dump = new Button.with_label("Dump net to file");
+		dump.clicked.connect(() => {
+			if (!is_network_ready())
+				return;
+
+			var fc = new FileChooserDialog("Dump network to file", this,
+				FileChooserAction.SAVE, Stock.SAVE, 0, Stock.CANCEL, 1);
+			var ff = new FileFilter();
+			ff.set_filter_name("Network dump (*.net)");
+			ff.add_pattern("*.net");
+			fc.set_filter(ff);
+			if (fc.run() == 0)
+				m_network.dump_to_file(fc.get_filename());
+			fc.destroy();
+		});
+		subgrid.attach(dump, 1, 0, 1, 1);
 
 		var test = new Button.from_stock(Gtk.Stock.OK);
 		test.clicked.connect(() => {
@@ -642,7 +681,6 @@ public class MainWindow : Window {
 			Container buttons = (Container)td.get_action_area();
 
 			var progbar = new ProgressBar();
-			progbar.sensitive = false;
 			progbar.width_request = 320;
 			progbar.height_request = 20;
 			progbar.show_text = true;
@@ -670,6 +708,9 @@ public class MainWindow : Window {
 			buttons.add(cancel);
 
 			td.show_all();
+			// make sure the window pops up
+			for (int i = 0; i < 10; ++i)
+				main_iteration_do(false);
 
 			m_break_testing = false;
 
@@ -685,11 +726,13 @@ public class MainWindow : Window {
 				if (m_break_testing)
 					break;
 
-				double frac = (double)e / (double)examples;
-				progbar.fraction = frac;
-				progbar.text = "%.0f%%".printf(frac * 100.0);
-				if (e % TICK_UPDATE_FREQUENCY == 0)
-					main_iteration_do(false);
+				if (e % TICK_UPDATE_FREQUENCY == 0) {
+					double frac = (double)e / (double)examples;
+					progbar.fraction = frac;
+					progbar.text = "%.0f%%".printf(frac * 100.0);
+					for (int i = 0; i < 10; ++i)
+						main_iteration_do(false);
+				}
 
 				// pick a character and render
 				m_test_charsel.change_value(ScrollType.JUMP,
@@ -722,12 +765,12 @@ public class MainWindow : Window {
 			td.run();
 			td.destroy();
 		});
-		subgrid.attach(test, 1, 0, 1, 1);
+		subgrid.attach(test, 2, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 7, 1, 1);
+		grid.attach(subgrid, 0, 7, 3, 1);
 
 		var fixed = new Fixed();
-		grid.attach(fixed, 1, 4, 1, 2);
+		grid.attach(fixed, 2, 4, 1, 2);
 
 		m_testing_renderer = new CharacterRenderer(
 			(FontChooser)m_test_font_button,
@@ -736,6 +779,33 @@ public class MainWindow : Window {
 		fixed.put(m_testing_renderer, 0, 0);
 
 		return grid;
+	}
+
+	private Widget create_about_page() {
+		var label = new Label(null);
+
+		label.use_markup = true;
+		label.justify = Justification.LEFT;
+		label.wrap = true;
+		label.margin = 20;
+		label.set_markup("<span font_size=\"x-large\" font_weight=\"bold\">"
+			+ "PerceptVala</span>\n"
+			+ "An experimentation environment in <b>optical "
+			+ "character recognition</b> using <b>artificial neural "
+			+ "networks</b> written in <a href=\"http://live.gnome.org/Vala\">"
+			+ "Vala</a>\n\n"
+			+ "<span font_size=\"small\">Author: <b>Leszek Godlewski</b> "
+			+ "&lt;<a href=\"mailto:github [at] inequation [dot] org\">"
+			+ "github@inequation.org</a>&gt;\n"
+			+ "Computer Graphics and Software, group 1, sem. VI, 2011/2012\n"
+			+ "Biologically-Motivated Artificial Intelligence Methods\n"
+			+ "Faculty of Automatics, Electronics and Computer Science\n"
+			+ "Silesian University of Technology</span>\n\n"
+			+ "Reference used: <a href=\"http://www.idsia.ch/NNcourse/\">"
+			+ "N. Schraudolph, F. Cummins - Introduction to Neural Networks"
+			+ "</a>");
+
+		return label;
 	}
 
 	private bool is_network_ready() {
@@ -756,8 +826,7 @@ public class MainWindow : Window {
 		if (!is_network_ready())
 			return;
 
-		m_testing_renderer.queue_draw();
-		main_iteration_do(false);
+		m_testing_renderer.render();
 
 		string outputs;
 		int result = run_network(out outputs);
@@ -773,6 +842,8 @@ public class MainWindow : Window {
 					(char)(32 + m_start_output.active + result)));
 				break;
 		}
+
+		m_testing_renderer.queue_draw();
 	}
 
 	private int run_network(out string outputs_str) {

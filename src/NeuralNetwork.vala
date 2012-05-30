@@ -41,7 +41,9 @@ public class NeuralNetwork {
 		var results = new ArrayList<float?>();
 		foreach (Neuron n in m_outputs) {
 			float f = n.get_signal();
-			//stdout.printf("Activation: %f\n", f);
+#if DEBUG && VERBOSE
+			stdout.printf("Result activation: %f\n", f);
+#endif
 			results.add(f);
 		}
 		return results;
@@ -53,12 +55,6 @@ public class NeuralNetwork {
 	 * @param target	array of target weights to descend to
 	 */
 	public void train(float rate, ArrayList<float?> target) {
-		// clear all errors
-		/*foreach (ArrayList<Neuron> layer in m_layers) {
-			foreach (Neuron n in layer)
-				n.error = 0.0f;
-		}*/
-
 		// compute forward activation
 		var output = run();
 
@@ -66,40 +62,97 @@ public class NeuralNetwork {
 
 		// compute output error
 		int i = 0;
+#if DEBUG && VERBOSE
+		int j = 0;
+#endif
 		foreach (Neuron n in m_outputs) {
 			n.error = target[i] - output[i];
-			//stdout.printf("Output error %d: %f - %f = %f\n", i, target[i], output[i], n.error);
+#if DEBUG && VERBOSE
+			stdout.printf("Output error %d: %f - %f = %f\n", i, target[i],
+				output[i], n.error);
 			++i;
+#endif
 		}
 
-		int j;
 		// backpropagation - don't affect input and output layers
 		for (i = m_layers.size - 2; i > 0; --i) {
+#if DEBUG && VERBOSE
 			j = 0;
+#endif
 			foreach (Neuron n in m_layers[i]) {
-				stdout.printf("layer: %d neuron: %d der: %f err: %f\n", i, j,
-					n.get_signal_derivative(), n.get_signal_error());
-				n.error = n.get_signal_derivative() * n.get_signal_error();
+				float der = n.get_signal_derivative();
+				float err = n.get_signal_error();
+				n.error = der * err;
+#if DEBUG && VERBOSE
+				stdout.printf("layer: %d neuron: %d err: %f * %f = %f\n", i, j,
+					der, err, n.error);
 				++j;
+#endif
 			}
 		}
 
 		// update weights
-		//i = 0;
+#if DEBUG && VERBOSE
+		i = 0;
+#endif
 		foreach (ArrayList<Neuron> layer in m_layers) {
-			//j = 0;
+#if DEBUG && VERBOSE
+			j = 0;
+#endif
 			foreach (Neuron n in layer) {
-				/*if (i > 0)
-					stdout.printf("layer: %d neuron: %d error: %f\n", i, j, n.error);*/
+#if DEBUG && VERBOSE
+				if (i > 0)
+					stdout.printf("layer: %d neuron: %d error: %f\n", i, j,
+						n.error);
+#endif
 				n.update_weights(rate);
-				//++j;
+#if DEBUG && VERBOSE
+				++j;
+#endif
 			}
-			//++i;
+#if DEBUG && VERBOSE
+			++i;
+#endif
 		}
 	}
 
 	private float get_initial_weight() {
-		return 0.0f;//(float)Random.next_double() - 0.5f);
+		return 0.0f;//(float)Random.next_double() - 0.5f;
+	}
+
+	public void dump_to_file(string fname) {
+		try {
+			stdout.printf("Dumping network to file %s\n", fname);
+			var f = File.new_for_path(fname);
+			if (f.query_exists())
+				f.delete();
+
+			var dos = new DataOutputStream(f.create(FileCreateFlags.REPLACE_DESTINATION));
+
+			for (int i = 0; i < m_layers.size; ++i) {
+				var layer = m_layers[i];
+				dos.put_string("Layer %d: %s, %s\n".printf(i, i == 0 ? "input" :
+					(i == m_layers.size - 1 ? "output" : "hidden"),
+					layer[0].is_tanh ? "tanh()" : "linear"));
+				for (int j = 0; j < layer.size; ++j) {
+					var neuron = layer[j];
+					dos.put_string("\tLayer %d Neuron %d: err = %f\n".printf(i,
+						j, neuron.error));
+					int k = 0;
+					foreach (Neuron.Synapse s in neuron.synapses) {
+						if (s.ant == neuron)
+							continue;
+						dos.put_string("\t\t-> Layer %d Neuron %d: %f\n".printf(
+							i + 1, k, s.weight));
+						++k;
+					}
+				}
+			}
+		} catch (Error e) {
+			stdout.printf("Error dumping to file: %s\n", e.message);
+		} finally {
+			stdout.printf("Dumping done\n");
+		}
 	}
 
 	public ArrayList<Neuron> outputs {
