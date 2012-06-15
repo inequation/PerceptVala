@@ -42,6 +42,7 @@ public class MainWindow : Window {
 	private CharacterRenderer m_testing_renderer;
 	private Scale m_test_charsel;
 	private Label m_test_result;
+	private SpinButton m_test_epsilon;
 
 	// training dialog widgets
 	private SpinButton m_rate;
@@ -61,8 +62,8 @@ public class MainWindow : Window {
 		IS_TANH
 	}
 
-	private static const int CHARSEL_WIDTH_REQUEST = 256 * 2;
-	private static const int TICK_UPDATE_FREQUENCY = 2;
+	private static const int CHARSEL_WIDTH_REQUEST		= 256 * 2;
+	private static const int TICK_UPDATE_FREQUENCY		= 2;
 
 	public MainWindow() {
 		title = "PerceptVala";
@@ -386,11 +387,21 @@ public class MainWindow : Window {
 			ff.set_filter_name("Network structure (*.net)");
 			ff.add_pattern("*.net");
 			fc.filter = ff;
-			if (fc.run() == 1)
-				m_network = NeuralNetwork.deserialize(fc.get_filename());
+			if (fc.run() == 1) {
+				var net = NeuralNetwork.deserialize(fc.get_filename());
+				if (net != null) {
+					m_network = net;
+					infer_model_from_network();
+				} else {
+					var msgbox = new MessageDialog(this,
+						DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+						MessageType.ERROR, ButtonsType.OK,
+						"Failed to deserialize network. See console for details.");
+					msgbox.run();
+					msgbox.destroy();
+				}
+			}
 			fc.destroy();
-
-			infer_model_from_network();
 		});
 
 		var save = new Button.from_stock(Gtk.Stock.SAVE_AS);
@@ -457,12 +468,12 @@ public class MainWindow : Window {
 
 		grid.attach(new Label("Learning rate"), 0, 3, 1, 1);
 		m_rate = new SpinButton.with_range(0.00001, 1.0, 0.00001);
-		m_rate.adjustment.value = 0.005;
+		m_rate.adjustment.value = 0.03;
 		grid.attach(m_rate, 1, 3, 1, 1);
 
 		grid.attach(new Label("Number of cycles"), 0, 4, 1, 1);
 		m_cycles = new SpinButton.with_range(1, 9999999, 1);
-		m_cycles.adjustment.value = 3000;
+		m_cycles.adjustment.value = 300;
 		grid.attach(m_cycles, 1, 4, 1, 1);
 
 		grid.attach(new Label("Example order"), 0, 5, 1, 2);
@@ -500,12 +511,21 @@ public class MainWindow : Window {
 			if (!is_network_ready())
 				return;
 
+			GLib.Value val;
+			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
+			int examples = val.get_int();
+			int cycles = (int)m_cycles.adjustment.value;
+			int ticks = examples * cycles - 1;
+
 			var td = new Dialog.with_buttons("Network training progress", this,
 				DialogFlags.MODAL);
 			td.has_resize_grip = false;
 			td.deletable = false;
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
+
+			var error_plot = new ErrorPlotRenderer(800, 240, 1.0f, cycles);
+			contents.add(error_plot);
 
 			var total_progbar = new ProgressBar();
 			total_progbar.width_request = 320;
@@ -531,12 +551,6 @@ public class MainWindow : Window {
 				main_iteration_do(false);
 
 			m_break_training = false;
-
-			GLib.Value val;
-			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
-			int examples = val.get_int();
-			int cycles = (int)m_cycles.adjustment.value;
-			int ticks = examples * cycles;
 
 			var target = new ArrayList<float?>();
 			for (int e = 0; e < examples; ++e)
@@ -565,18 +579,21 @@ public class MainWindow : Window {
 					}
 				}
 
-				for (int e = 0; e < examples; ++e) {
+				var error = 0.0f;
+
+				int e;
+				for (e = 0; e < examples; ++e) {
 					// stop if user clicked cancel
 					if (m_break_training)
 						break;
 
 					// update progress bar
 					int tick = c * examples + e;
-					if (tick % TICK_UPDATE_FREQUENCY == 0) {
+					if (tick % TICK_UPDATE_FREQUENCY == 0 || tick == ticks) {
 						double frac = (double)tick / (double)ticks;
 						total_progbar.fraction = frac;
 						total_progbar.text = "Total: %.0f%%".printf(frac * 100.0);
-						frac = (double)e / (double)examples;
+						frac = (double)e / (double)(examples - 1);
 						cycle_progbar.fraction = frac;
 						cycle_progbar.text = "Cycle: %.0f%%".printf(frac * 100.0);
 						for (int i = 0; i < 10; ++i)
@@ -591,11 +608,33 @@ public class MainWindow : Window {
 
 					// set new target and learn, then reset the target array
 					target.set(t, 1.0f);
-					m_network.train((float)m_rate.value, target);
+					try {
+						error += m_network.train((float)m_rate.value, target);
+					} catch (ActivationError e) {
+						var msgbox = new MessageDialog(this,
+							DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+							MessageType.WARNING, ButtonsType.OK,
+							"Network error: numerical instability in %s.".printf(e.message));
+						msgbox.run();
+						msgbox.destroy();
+						// immediately stop the training
+						m_break_training = true;
+						break;
+					}
 					target.set(t, 0.0f);
 				}
+				error /= (float)e;
+				error_plot.next_value(error);
+				error_plot.queue_draw();
 			}
+			error_plot.queue_draw();
 
+			// set dialog to dismissable
+			buttons.remove(btn);
+			td.deletable = true;
+			td.add_action_widget(new Button.from_stock(Stock.OK), 0);
+			td.show_all();
+			td.run();
 			td.destroy();
 		});
 		subgrid.attach(train, 1, 0, 1, 1);
@@ -660,7 +699,7 @@ public class MainWindow : Window {
 		});
 		grid.attach(m_noise, 2, 3, 1, 1);
 
-		grid.attach(new Label("Character code"), 0, 4, 2, 1);
+		grid.attach(new Label("Character"), 0, 4, 2, 2);
 		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_test_charsel.set_increments(1, 10);
@@ -670,9 +709,14 @@ public class MainWindow : Window {
 		});
 		grid.attach(m_test_charsel, 2, 5, 1, 1);
 
-		grid.attach(new Label("Recognized character"), 0, 6, 2, 1);
+		grid.attach(new Label("Recognition epsilon"), 0, 6, 2, 1);
+		m_test_epsilon = new SpinButton.with_range(0.0, 1.0, 0.00001);
+		m_test_epsilon.adjustment.value = 0.1;
+		grid.attach(m_test_epsilon, 2, 6, 1, 1);
+
+		grid.attach(new Label("Recognized character"), 0, 7, 2, 1);
 		m_test_result = new Label(" ");
-		grid.attach(m_test_result, 2, 6, 1, 1);
+		grid.attach(m_test_result, 2, 7, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -706,12 +750,22 @@ public class MainWindow : Window {
 			if (!is_network_ready())
 				return;
 
+			GLib.Value val;
+			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
+			int examples = val.get_int();
+			int unrec = 0;
+			int rec = 0;
+			int ambig = 0;
+
 			var td = new Dialog.with_buttons("Network test progress", this,
 				DialogFlags.MODAL);
 			td.has_resize_grip = false;
 			td.deletable = false;
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
+
+			var error_plot = new ErrorPlotRenderer(800, 240, 1.0f, examples);
+			contents.add(error_plot);
 
 			var progbar = new ProgressBar();
 			progbar.width_request = 320;
@@ -747,20 +801,13 @@ public class MainWindow : Window {
 
 			m_break_testing = false;
 
-			GLib.Value val;
-			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
-			int examples = val.get_int();
-			int unrec = 0;
-			int rec = 0;
-			int ambig = 0;
-
 			for (int e = 0; e < examples; ++e) {
 				// stop if user clicked cancel
 				if (m_break_testing)
 					break;
 
-				if (e % TICK_UPDATE_FREQUENCY == 0) {
-					double frac = (double)e / (double)examples;
+				if (e % TICK_UPDATE_FREQUENCY == 0 || e == examples - 1) {
+					double frac = (double)e / (double)(examples - 1);
 					progbar.fraction = frac;
 					progbar.text = "%.0f%%".printf(frac * 100.0);
 					for (int i = 0; i < 10; ++i)
@@ -772,13 +819,32 @@ public class MainWindow : Window {
 					32 + m_start_output.active + e);
 				m_testing_renderer.render();
 
-				int result = run_network(null);
+				float err;
+				int result = -2;
+				try {
+					result = run_network(null, out err);
+				} catch (ActivationError e) {
+					var msgbox = new MessageDialog(this,
+						DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+						MessageType.WARNING, ButtonsType.OK,
+						"Network error: numerical instability in %s.".printf(e.message));
+					msgbox.run();
+					msgbox.destroy();
+
+					// immediately stop testing
+					m_break_testing = true;
+					break;
+				}
 				switch (result) {
 					case -2:	unrec_label.label = "%d".printf(++unrec); break;
 					case -1:	ambig_label.label = "%d".printf(++ambig); break;
 					default:	rec_label.label = "%d".printf(++rec); break;
 				}
+				error_plot.next_value(err);
+				error_plot.put_point(result >= 0);
+				error_plot.queue_draw();
 			}
+			error_plot.queue_draw();
 
 			// display percentage statistics
 			progbar.fraction = 1.0;
@@ -800,7 +866,7 @@ public class MainWindow : Window {
 		});
 		subgrid.attach(test, 2, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 7, 3, 1);
+		grid.attach(subgrid, 0, 8, 3, 1);
 
 		var fixed = new Fixed();
 		grid.attach(fixed, 2, 4, 1, 2);
@@ -862,32 +928,52 @@ public class MainWindow : Window {
 		m_testing_renderer.render();
 
 		string outputs;
-		int result = run_network(out outputs);
+		float err;
+		int result = -2;
+		try {
+			result = run_network(out outputs, out err);
+		} catch (ActivationError e) {
+			stdout.printf("failed: \"%s\"\n", e.message);
+			var msgbox = new MessageDialog(this,
+				DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
+				MessageType.WARNING, ButtonsType.OK,
+				"Network error: numerical instability in %s.".printf(e.message));
+			msgbox.run();
+			msgbox.destroy();
+			m_test_result.set_text("numerical error");
+			return;
+		}
 		switch (result) {
 			case -2:
-				m_test_result.set_text("not recognized");
+				m_test_result.set_text("not recognized [error: %f]".printf(err));
 				break;
 			case -1:
-				m_test_result.set_text("ambiguous: %s".printf(outputs));
+				m_test_result.set_text("ambiguous: %s [error: %f]".printf(outputs, err));
 				break;
 			default:
-				m_test_result.set_text("#%u: '%c'".printf(result,
-					(char)(32 + m_start_output.active + result)));
+				m_test_result.set_text("#%u: '%c', [error: %f]".printf(result,
+					(char)(32 + m_start_output.active + result), err));
 				break;
 		}
 
 		m_testing_renderer.queue_draw();
 	}
 
-	private int run_network(out string outputs_str) {
+	private int run_network(out string outputs_str, out float error)
+		throws ActivationError {
 		stdout.printf("Running network...");
 		var net_output = m_network.run();
 		stdout.printf("done.\n");
 		int counter = 0;
 		int result = -2;
 		var outputs = new StringBuilder();
+		var sse = 0.0f;
 		foreach (float activation in net_output) {
-			if (activation >= 1.0f) {
+			float expected = (counter ==
+				(int)(m_test_charsel.adjustment.value)
+					- m_start_output.active - 32)
+				? 1.0f : 0.0f;
+			if (activation >= (1.0f - (float)m_test_epsilon.value)) {
 				outputs.append("1");
 				if (result == -2)
 					result = counter;
@@ -896,10 +982,13 @@ public class MainWindow : Window {
 					result = -1;
 			} else
 				outputs.append("0");
+			var diff = activation - expected;
+			sse += diff * diff;
 			++counter;
 		}
 		if (outputs_str != null)
 			outputs_str = outputs.str;
+		error = 0.5f * sse;
 		return result;
 	}
 

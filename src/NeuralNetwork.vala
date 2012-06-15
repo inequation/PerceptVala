@@ -61,7 +61,7 @@ public class NeuralNetwork {
 	 * Runs the neural network.
 	 * @return array of output signals
 	 */
-	public ArrayList<float?> run() {
+	public ArrayList<float?> run() throws ActivationError {
 		var results = new ArrayList<float?>();
 		foreach (Neuron n in m_outputs) {
 			float f = n.get_signal();
@@ -77,14 +77,16 @@ public class NeuralNetwork {
 	 * Trains the neural network with the given example.
 	 * @param rate		learning rate
 	 * @param target	array of target weights to descend to
+	 * @return	the sum-squared error after the current training cycle
 	 */
-	public void train(float rate, ArrayList<float?> target) {
+	public float train(float rate, ArrayList<float?> target)
+		throws ActivationError {
 		// compute forward activation
 		var output = run();
 
 		assert(output.size == target.size);
 
-		// compute output error
+		// compute output error vector
 		int i = 0;
 #if DEBUG && VERBOSE
 		int j = 0;
@@ -94,8 +96,8 @@ public class NeuralNetwork {
 #if DEBUG && VERBOSE
 			stdout.printf("Output error %d: %f - %f = %f\n", i, target[i],
 				output[i], n.error);
-			++i;
 #endif
+			++i;
 		}
 
 		// backpropagation - don't affect input and output layers
@@ -138,6 +140,16 @@ public class NeuralNetwork {
 			++i;
 #endif
 		}
+
+		// calculate sum-squared error
+		float sse = 0.0f;
+		float diff;
+		for (i = 0; i < m_outputs.size; ++i) {
+			diff = target[i] - output[i];
+			sse += diff * diff;
+			++i;
+		}
+		return 0.5f * sse;
 	}
 
 	private float get_initial_weight() {

@@ -3,6 +3,10 @@ PerceptVala neuron class
 Written by Leszek Godlewski <github@inequation.org>
 */
 
+public errordomain ActivationError {
+	IS_NAN_OR_INF
+}
+
 public class Neuron {
 #if DEBUG
 	private static const float ACTIVATION_DANGER_THRESHOLD = 10.0f;
@@ -32,7 +36,7 @@ public class Neuron {
 			m_anterior += s;
 	}
 
-	public virtual float get_signal() {
+	public virtual float get_signal() throws ActivationError {
 		float activation = 0.0f;
 #if DEBUG
 		int i = 0;
@@ -57,11 +61,13 @@ public class Neuron {
 			last_activation = activation;
 			++i;
 #endif
+			if (activation.is_nan() || (bool)activation.is_infinity())
+				throw new ActivationError.IS_NAN_OR_INF("get_signal");
 		}
 		return activation;
 	}
 
-	public float get_signal_derivative() {
+	public float get_signal_derivative() throws ActivationError {
 		if (m_is_tanh) {
 			// tanh(x)' = 1 - tanh^2(x)
 			float y = get_signal();
@@ -89,12 +95,14 @@ public class Neuron {
 				last_activation = activation;
 				++i;
 #endif
+				if (activation.is_nan() || (bool)activation.is_infinity())
+					throw new ActivationError.IS_NAN_OR_INF("get_signal_derivative");
 			}
 		}
 		return activation;
 	}
 
-	public float get_signal_error() {
+	public float get_signal_error() throws ActivationError {
 		float activation = 0.0f;
 #if DEBUG
 		int i = 0;
@@ -118,12 +126,14 @@ public class Neuron {
 				last_activation = activation;
 				++i;
 #endif
+				if (activation.is_nan() || (bool)activation.is_infinity())
+					throw new ActivationError.IS_NAN_OR_INF("get_signal_error");
 			}
 		}
 		return activation;
 	}
 
-	public void update_weights(float rate) {
+	public void update_weights(float rate) throws ActivationError {
 		foreach (Synapse s in m_anterior)
 			s.weight += rate * error * s.ant.get_signal();
 	}
