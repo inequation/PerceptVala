@@ -139,9 +139,25 @@ public class Neuron {
 		return activation;
 	}
 
+	public double get_error_variance() {
+		double v;
+		// output nodes have it simpler
+		if (m_posterior.length == 0)
+			v = 1.0;
+		else {
+			v = 0.0;
+			foreach (Synapse s in m_posterior)
+				v += s.post.get_error_variance();
+		}
+		return v / (double)m_anterior.length;
+	}
+
 	public void update_weights(double rate, double momentum) throws ActivationError {
+		var local_rate = rate / (m_anterior.length
+			* Math.sqrt(get_error_variance()));
+
 		foreach (Synapse s in m_anterior) {
-			s.weight += rate * error * s.ant.get_signal()
+			s.weight += local_rate * error * s.ant.get_signal()
 				+ momentum * s.last_weight_update;
 			s.last_weight_update = s.weight;
 		}

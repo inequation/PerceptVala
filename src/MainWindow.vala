@@ -478,17 +478,17 @@ public class MainWindow : Window {
 
 		grid.attach(new Label("Base learning rate"), 0, 4, 1, 1);
 		m_rate = new SpinButton.with_range(0.00001, 1.0, 0.00001);
-		m_rate.adjustment.value = 0.03;
+		m_rate.adjustment.value = 0.25;
 		grid.attach(m_rate, 1, 4, 1, 1);
 
 		grid.attach(new Label("Momentum term"), 0, 5, 1, 1);
 		m_momentum = new SpinButton.with_range(-1.0, 1.0, 0.00001);
-		m_momentum.adjustment.value = 0.0005;
+		m_momentum.adjustment.value = 0.0007;
 		grid.attach(m_momentum, 1, 5, 1, 1);
 
 		grid.attach(new Label("Number of cycles"), 0, 6, 1, 1);
 		m_cycles = new SpinButton.with_range(1, 9999999, 1);
-		m_cycles.adjustment.value = 75;
+		m_cycles.adjustment.value = 65;
 		grid.attach(m_cycles, 1, 6, 1, 1);
 
 		grid.attach(new Label("Example order"), 0, 7, 1, 2);
@@ -539,7 +539,8 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240, 1.0, cycles);
+			var error_plot = new ErrorPlotRenderer(800, 240,
+				Math.sqrt(examples * 4.0), cycles);
 			contents.add(error_plot);
 
 			var total_progbar = new ProgressBar();
@@ -780,7 +781,8 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240, 1.0, examples);
+			var error_plot = new ErrorPlotRenderer(800, 240,
+				Math.sqrt(examples * 4.0), examples);
 			contents.add(error_plot);
 
 			var progbar = new ProgressBar();
