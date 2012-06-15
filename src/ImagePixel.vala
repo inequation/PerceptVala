@@ -11,13 +11,13 @@ public class ImagePixel : Neuron {
 		image = null;
 	}
 
-	public override float get_signal() {
+	public override double get_signal() {
 		if (image == null)
-			return 1.0f;
+			return 1.0;
 		uint8[] pixel = image.get_pixel(m_x, m_y);
-		return 0.2126f * ((float)pixel[0] / 255.0f)
-				+ 0.7152f * ((float)pixel[1] / 255.0f)
-				+ 0.0722f * ((float)pixel[2] / 255.0f);
+		return 0.2126 * ((double)pixel[0] / 255.0)
+				+ 0.7152 * ((double)pixel[1] / 255.0)
+				+ 0.0722 * ((double)pixel[2] / 255.0);
 	}
 
 	public CharacterRenderer? image;

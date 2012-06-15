@@ -524,7 +524,7 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240, 1.0f, cycles);
+			var error_plot = new ErrorPlotRenderer(800, 240, 1.0, cycles);
 			contents.add(error_plot);
 
 			var total_progbar = new ProgressBar();
@@ -552,9 +552,9 @@ public class MainWindow : Window {
 
 			m_break_training = false;
 
-			var target = new ArrayList<float?>();
+			var target = new ArrayList<double?>();
 			for (int e = 0; e < examples; ++e)
-				target.add(0.0f);
+				target.add(0.0);
 
 			for (int c = 0; c < cycles; ++c) {
 				// stop if user clicked cancel
@@ -579,7 +579,7 @@ public class MainWindow : Window {
 					}
 				}
 
-				var error = 0.0f;
+				var error = 0.0;
 
 				int e;
 				for (e = 0; e < examples; ++e) {
@@ -607,9 +607,9 @@ public class MainWindow : Window {
 					m_training_renderer.render();
 
 					// set new target and learn, then reset the target array
-					target.set(t, 1.0f);
+					target.set(t, 1.0);
 					try {
-						error += m_network.train((float)m_rate.value, target);
+						error += m_network.train(m_rate.value, target);
 					} catch (ActivationError e) {
 						var msgbox = new MessageDialog(this,
 							DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
@@ -621,9 +621,9 @@ public class MainWindow : Window {
 						m_break_training = true;
 						break;
 					}
-					target.set(t, 0.0f);
+					target.set(t, 0.0);
 				}
-				error /= (float)e;
+				error /= (double)e;
 				error_plot.next_value(error);
 				error_plot.queue_draw();
 			}
@@ -764,7 +764,7 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240, 1.0f, examples);
+			var error_plot = new ErrorPlotRenderer(800, 240, 1.0, examples);
 			contents.add(error_plot);
 
 			var progbar = new ProgressBar();
@@ -779,12 +779,12 @@ public class MainWindow : Window {
 			tgrid.column_homogeneous = false;
 			tgrid.row_homogeneous = false;
 
-			tgrid.attach(new Label("Unrecognized:"), 0, 0, 1, 1);
-			var unrec_label = new Label("0");
-			tgrid.attach(unrec_label, 1, 0, 1, 1);
-			tgrid.attach(new Label("Recognized:"), 0, 1, 1, 1);
+			tgrid.attach(new Label("Recognized:"), 0, 0, 1, 1);
 			var rec_label = new Label("0");
-			tgrid.attach(rec_label, 1, 1, 1, 1);
+			tgrid.attach(rec_label, 1, 0, 1, 1);
+			tgrid.attach(new Label("Unrecognized:"), 0, 1, 1, 1);
+			var unrec_label = new Label("0");
+			tgrid.attach(unrec_label, 1, 1, 1, 1);
 			tgrid.attach(new Label("Ambiguous:"), 0, 2, 1, 1);
 			var ambig_label = new Label("0");
 			tgrid.attach(ambig_label, 1, 2, 1, 1);
@@ -819,7 +819,7 @@ public class MainWindow : Window {
 					32 + m_start_output.active + e);
 				m_testing_renderer.render();
 
-				float err;
+				double err;
 				int result = -2;
 				try {
 					result = run_network(null, out err);
@@ -850,11 +850,11 @@ public class MainWindow : Window {
 			progbar.fraction = 1.0;
 			progbar.text = "100%";
 			unrec_label.label = "%d/%d (%.1f%%)".printf(unrec, examples,
-				100.0f * (float)unrec / (float)examples);
+				100.0 * (double)unrec / (double)examples);
 			ambig_label.label = "%d/%d (%.1f%%)".printf(ambig, examples,
-				100.0f * (float)ambig / (float)examples);
+				100.0 * (double)ambig / (double)examples);
 			rec_label.label = "%d/%d (%.1f%%)".printf(rec, examples,
-				100.0f * (float)rec / (float)examples);
+				100.0f * (double)rec / (double)examples);
 
 			// set dialog to dismissable
 			buttons.remove(cancel);
@@ -928,7 +928,7 @@ public class MainWindow : Window {
 		m_testing_renderer.render();
 
 		string outputs;
-		float err;
+		double err;
 		int result = -2;
 		try {
 			result = run_network(out outputs, out err);
@@ -959,7 +959,7 @@ public class MainWindow : Window {
 		m_testing_renderer.queue_draw();
 	}
 
-	private int run_network(out string outputs_str, out float error)
+	private int run_network(out string outputs_str, out double error)
 		throws ActivationError {
 		stdout.printf("Running network...");
 		var net_output = m_network.run();
@@ -967,13 +967,13 @@ public class MainWindow : Window {
 		int counter = 0;
 		int result = -2;
 		var outputs = new StringBuilder();
-		var sse = 0.0f;
-		foreach (float activation in net_output) {
-			float expected = (counter ==
+		double sse = 0.0;
+		foreach (double activation in net_output) {
+			double expected = (counter ==
 				(int)(m_test_charsel.adjustment.value)
 					- m_start_output.active - 32)
-				? 1.0f : 0.0f;
-			if (activation >= (1.0f - (float)m_test_epsilon.value)) {
+				? 1.0 : 0.0;
+			if (activation >= (1.0 - (double)m_test_epsilon.value)) {
 				outputs.append("1");
 				if (result == -2)
 					result = counter;
@@ -988,7 +988,7 @@ public class MainWindow : Window {
 		}
 		if (outputs_str != null)
 			outputs_str = outputs.str;
-		error = 0.5f * sse;
+		error = 0.5 * sse;
 		return result;
 	}
 

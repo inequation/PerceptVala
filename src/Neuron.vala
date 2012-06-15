@@ -9,15 +9,15 @@ public errordomain ActivationError {
 
 public class Neuron {
 #if DEBUG
-	private static const float ACTIVATION_DANGER_THRESHOLD = 10.0f;
+	private static const double ACTIVATION_DANGER_THRESHOLD = 10.0;
 #endif
 
 	/** Neuron connection. */
 	public class Synapse {
 		public Neuron? post;
 		public Neuron? ant;
-		public float weight;
-		public Synapse(Neuron? posterior, Neuron? anterior, float _weight) {
+		public double weight;
+		public Synapse(Neuron? posterior, Neuron? anterior, double _weight) {
 			post = posterior;
 			ant = anterior;
 			weight = _weight;
@@ -26,7 +26,7 @@ public class Neuron {
 
 	public Neuron(bool is_tanh) {
 		m_is_tanh = is_tanh;
-		error = 0.0f;
+		error = 0.0;
 	}
 
 	public void add_synapse(Synapse s) {
@@ -36,20 +36,20 @@ public class Neuron {
 			m_anterior += s;
 	}
 
-	public virtual float get_signal() throws ActivationError {
-		float activation = 0.0f;
+	public virtual double get_signal() throws ActivationError {
+		double activation = 0.0;
 #if DEBUG
 		int i = 0;
-		float last_activation = activation;
+		double last_activation = activation;
 #endif
 		foreach (Synapse s in m_anterior) {
-			float sgnl = s.ant.get_signal();
+			double sgnl = s.ant.get_signal();
 			if (m_is_tanh)
-				sgnl = Math.tanhf(sgnl);
+				sgnl = Math.tanh(sgnl);
 			activation += s.weight * sgnl;
 #if DEBUG
 			// FIXME: report bug that is_infinity() returns int?
-			if (Math.fabsf(activation) > ACTIVATION_DANGER_THRESHOLD
+			if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 				|| activation.is_nan() || (bool)activation.is_infinity()) {
 				if (!last_activation.is_nan()
 					&& !(bool)last_activation.is_infinity()) {
@@ -67,23 +67,23 @@ public class Neuron {
 		return activation;
 	}
 
-	public float get_signal_derivative() throws ActivationError {
+	public double get_signal_derivative() throws ActivationError {
 		if (m_is_tanh) {
 			// tanh(x)' = 1 - tanh^2(x)
-			float y = get_signal();
-			return 1.0f - y * y;
+			double y = get_signal();
+			return 1.0 - y * y;
 		}
-		float activation = 0.0f;
+		double activation = 0.0;
 #if DEBUG
 		int i = 0;
-		float last_activation = activation;
+		double last_activation = activation;
 #endif
 		foreach (Synapse s in m_anterior) {
 			if (!s.ant.is_bias_neuron()) {
 				activation += s.weight;
 #if DEBUG
 				// FIXME: report bug that is_infinity() returns int?
-				if (Math.fabsf(activation) > ACTIVATION_DANGER_THRESHOLD
+				if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 					|| activation.is_nan() || (bool)activation.is_infinity()) {
 					if (!last_activation.is_nan()
 						&& !(bool)last_activation.is_infinity()) {
@@ -102,18 +102,18 @@ public class Neuron {
 		return activation;
 	}
 
-	public float get_signal_error() throws ActivationError {
-		float activation = 0.0f;
+	public double get_signal_error() throws ActivationError {
+		double activation = 0.0;
 #if DEBUG
 		int i = 0;
-		float last_activation = activation;
+		double last_activation = activation;
 #endif
 		foreach (Synapse s in m_posterior) {
 			if (!s.post.is_bias_neuron()) {
 				activation += s.weight * s.post.error;
 #if DEBUG
 				// FIXME: report bug that is_infinity() returns int?
-				if (Math.fabsf(activation) > ACTIVATION_DANGER_THRESHOLD
+				if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 					|| activation.is_nan() || (bool)activation.is_infinity()) {
 					if (!last_activation.is_nan()
 						&& !(bool)last_activation.is_infinity()) {
@@ -133,7 +133,7 @@ public class Neuron {
 		return activation;
 	}
 
-	public void update_weights(float rate) throws ActivationError {
+	public void update_weights(double rate) throws ActivationError {
 		foreach (Synapse s in m_anterior)
 			s.weight += rate * error * s.ant.get_signal();
 	}
@@ -144,7 +144,7 @@ public class Neuron {
 
 	public virtual bool is_bias_neuron() { return false; }
 
-	public float error;
+	public double error;
 	private Synapse[] m_posterior;
 	private Synapse[] m_anterior;
 	private bool m_is_tanh;

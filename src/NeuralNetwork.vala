@@ -61,10 +61,10 @@ public class NeuralNetwork {
 	 * Runs the neural network.
 	 * @return array of output signals
 	 */
-	public ArrayList<float?> run() throws ActivationError {
-		var results = new ArrayList<float?>();
+	public ArrayList<double?> run() throws ActivationError {
+		var results = new ArrayList<double?>();
 		foreach (Neuron n in m_outputs) {
-			float f = n.get_signal();
+			double f = n.get_signal();
 #if DEBUG && VERBOSE
 			stdout.printf("Result activation: %f\n", f);
 #endif
@@ -79,7 +79,7 @@ public class NeuralNetwork {
 	 * @param target	array of target weights to descend to
 	 * @return	the sum-squared error after the current training cycle
 	 */
-	public float train(float rate, ArrayList<float?> target)
+	public double train(double rate, ArrayList<double?> target)
 		throws ActivationError {
 		// compute forward activation
 		var output = run();
@@ -106,8 +106,8 @@ public class NeuralNetwork {
 			j = 0;
 #endif
 			foreach (Neuron n in m_layers[i]) {
-				float der = n.get_signal_derivative();
-				float err = n.get_signal_error();
+				double der = n.get_signal_derivative();
+				double err = n.get_signal_error();
 				n.error = der * err;
 #if DEBUG && VERBOSE
 				stdout.printf("layer: %d neuron: %d err: %f * %f = %f\n", i, j,
@@ -142,22 +142,22 @@ public class NeuralNetwork {
 		}
 
 		// calculate sum-squared error
-		float sse = 0.0f;
-		float diff;
+		double sse = 0.0;
+		double diff;
 		for (i = 0; i < m_outputs.size; ++i) {
 			diff = target[i] - output[i];
 			sse += diff * diff;
 			++i;
 		}
-		return 0.5f * sse;
+		return 0.5 * sse;
 	}
 
-	private float get_initial_weight() {
-		return 0.0f;//(float)Random.next_double() - 0.5f;
+	private double get_initial_weight() {
+		return 0.0;//Random.next_double() - 0.5;
 	}
 
 	public void serialize(string in_fname) {
-		assert(sizeof(float) == sizeof(uint32));
+		assert(sizeof(double) == sizeof(uint32));
 		string fname;
 		if (!in_fname.down().has_suffix(".net"))
 			fname = "%s.net".printf(in_fname);
@@ -190,7 +190,7 @@ public class NeuralNetwork {
 					foreach (Neuron.Synapse s in neuron.anterior_synapses) {
 						if (k == 0)
 							assert(s.ant == m_bias_neuron);
-						float? w = s.weight;
+						double? w = s.weight;
 						dos.put_uint32(*((uint32 *)w));
 						++k;
 					}
@@ -207,7 +207,7 @@ public class NeuralNetwork {
 
 	public static NeuralNetwork? deserialize(string fname) {
 		NeuralNetwork? net = null;
-		assert(sizeof(float) == sizeof(uint32));
+		assert(sizeof(double) == sizeof(uint32));
 		try {
 			stdout.printf("Deserializing network from file %s\n", fname);
 			var f = File.new_for_path(fname);
@@ -239,7 +239,7 @@ public class NeuralNetwork {
 						neuron.add_synapse(new Neuron.Synapse(neuron,
 							// first synapse always leads to the bias neuron
 							k == 0 ? m_bias_neuron : null,
-							*(float *)w_as_int));
+							*(double *)w_as_int));
 					}
 				}
 				net.m_layers.insert(0, layer);

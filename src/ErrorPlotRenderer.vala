@@ -15,7 +15,7 @@ public class ErrorPlotRenderer : Gtk.Misc {
 	private double m_x_step;
 	private double m_y_step;
 
-	public ErrorPlotRenderer(int width, int height, float max_error, int num_ticks) {
+	public ErrorPlotRenderer(int width, int height, double max_error, int num_ticks) {
 		width_request = width;
 		height_request = height;
 		m_x = 0.0;
@@ -39,7 +39,7 @@ public class ErrorPlotRenderer : Gtk.Misc {
 		m_ctx.set_source_rgb(1, 0, 0);
 	}
 
-	public void next_value(float error_value) {
+	public void next_value(double error_value) {
 		if (m_x == 0.0) {
 			m_y = (double)error_value;
 			m_ctx.set_source_rgb(0, 0, 1);
