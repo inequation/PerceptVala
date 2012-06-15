@@ -10,10 +10,10 @@ public class Neuron {
 
 	/** Neuron connection. */
 	public class Synapse {
-		public Neuron post;
-		public Neuron ant;
+		public Neuron? post;
+		public Neuron? ant;
 		public float weight;
-		public Synapse(Neuron posterior, Neuron anterior, float _weight) {
+		public Synapse(Neuron? posterior, Neuron? anterior, float _weight) {
 			post = posterior;
 			ant = anterior;
 			weight = _weight;
@@ -26,7 +26,10 @@ public class Neuron {
 	}
 
 	public void add_synapse(Synapse s) {
-		m_synapses += s;
+		if (s.ant == this)
+			m_posterior += s;
+		else
+			m_anterior += s;
 	}
 
 	public virtual float get_signal() {
@@ -35,9 +38,7 @@ public class Neuron {
 		int i = 0;
 		float last_activation = activation;
 #endif
-		foreach (Synapse s in m_synapses) {
-			if (s.ant == this)
-				continue;
+		foreach (Synapse s in m_anterior) {
 			float sgnl = s.ant.get_signal();
 			if (m_is_tanh)
 				sgnl = Math.tanhf(sgnl);
@@ -71,9 +72,7 @@ public class Neuron {
 		int i = 0;
 		float last_activation = activation;
 #endif
-		foreach (Synapse s in m_synapses) {
-			if (s.ant == this)
-				continue;
+		foreach (Synapse s in m_anterior) {
 			if (!s.ant.is_bias_neuron()) {
 				activation += s.weight;
 #if DEBUG
@@ -101,9 +100,7 @@ public class Neuron {
 		int i = 0;
 		float last_activation = activation;
 #endif
-		foreach (Synapse s in m_synapses) {
-			if (s.post == this)
-				continue;
+		foreach (Synapse s in m_posterior) {
 			if (!s.post.is_bias_neuron()) {
 				activation += s.weight * s.post.error;
 #if DEBUG
@@ -127,19 +124,18 @@ public class Neuron {
 	}
 
 	public void update_weights(float rate) {
-		foreach (Synapse s in m_synapses) {
-			if (s.ant == this)
-				continue;
+		foreach (Synapse s in m_anterior)
 			s.weight += rate * error * s.ant.get_signal();
-		}
 	}
 
-	public Synapse[] synapses { get { return m_synapses; } }
+	public Synapse[] posterior_synapses { get { return m_posterior; } }
+	public Synapse[] anterior_synapses { get { return m_anterior; } }
 	public bool is_tanh { get { return m_is_tanh; } }
 
 	public virtual bool is_bias_neuron() { return false; }
 
 	public float error;
-	private Synapse[] m_synapses;
+	private Synapse[] m_posterior;
+	private Synapse[] m_anterior;
 	private bool m_is_tanh;
 }

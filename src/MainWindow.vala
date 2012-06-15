@@ -331,9 +331,9 @@ public class MainWindow : Window {
 			}
 		});
 
-		var save = new Button.from_stock(Gtk.Stock.SAVE);
-		subgrid.attach(save, 0, 5, 4, 1);
-		save.clicked.connect(() => {
+		var apply = new Button.from_stock(Gtk.Stock.APPLY);
+		subgrid.attach(apply, 0, 5, 2, 1);
+		apply.clicked.connect(() => {
 			GLib.Value val;
 			bool is_tanh;
 			int count;
@@ -341,7 +341,7 @@ public class MainWindow : Window {
 			m_net_model.get_value(m_output_layer, ViewColumn.SIZE, out val);
 			count = val.get_int();
 			stdout.printf("Building network - %d outputs...\n", count);
-			m_network = new NeuralNetwork(count);
+			m_network = new NeuralNetwork(count, 32 + m_start_output.active);
 
 			TreeIter it = m_output_layer;
 			bool valid = m_net_model.iter_previous(ref it);
@@ -375,6 +375,39 @@ public class MainWindow : Window {
 			stdout.printf("Network built.\n");
 
 			m_notebook.page = 1;
+		});
+
+		var load = new Button.from_stock(Gtk.Stock.OPEN);
+		subgrid.attach(load, 2, 5, 1, 1);
+		load.clicked.connect(() => {
+			var fc = new FileChooserDialog("Load network from file", this,
+				FileChooserAction.OPEN, Stock.CANCEL, 0, Stock.OPEN, 1);
+			var ff = new FileFilter();
+			ff.set_filter_name("Network structure (*.net)");
+			ff.add_pattern("*.net");
+			fc.filter = ff;
+			if (fc.run() == 1)
+				m_network = NeuralNetwork.deserialize(fc.get_filename());
+			fc.destroy();
+
+			infer_model_from_network();
+		});
+
+		var save = new Button.from_stock(Gtk.Stock.SAVE_AS);
+		subgrid.attach(save, 3, 5, 1, 1);
+		save.clicked.connect(() => {
+			if (!is_network_ready())
+				return;
+
+			var fc = new FileChooserDialog("Save network to file", this,
+				FileChooserAction.SAVE, Stock.CANCEL, 0, Stock.SAVE, 1);
+			var ff = new FileFilter();
+			ff.set_filter_name("Network structure (*.net)");
+			ff.add_pattern("*.net");
+			fc.filter = ff;
+			if (fc.run() == 1)
+				m_network.serialize(fc.get_filename());
+			fc.destroy();
 		});
 
 		grid.attach(subgrid, 1, 3, 1, 1);
@@ -651,19 +684,19 @@ public class MainWindow : Window {
 		rand.clicked.connect(test_current_character);
 		subgrid.attach(rand, 0, 0, 1, 1);
 
-		var dump = new Button.with_label("Dump net to file");
+		var dump = new Button.with_label("Dump net to text");
 		dump.clicked.connect(() => {
 			if (!is_network_ready())
 				return;
 
-			var fc = new FileChooserDialog("Dump network to file", this,
-				FileChooserAction.SAVE, Stock.SAVE, 0, Stock.CANCEL, 1);
+			var fc = new FileChooserDialog("Dump network to text file", this,
+				FileChooserAction.SAVE, Stock.CANCEL, 0, Stock.SAVE, 1);
 			var ff = new FileFilter();
-			ff.set_filter_name("Network dump (*.net)");
+			ff.set_filter_name("Network text dump (*.txt)");
 			ff.add_pattern("*.net");
 			fc.set_filter(ff);
-			if (fc.run() == 0)
-				m_network.dump_to_file(fc.get_filename());
+			if (fc.run() == 1)
+				m_network.dump_to_text_file(fc.get_filename());
 			fc.destroy();
 		});
 		subgrid.attach(dump, 1, 0, 1, 1);
@@ -868,5 +901,38 @@ public class MainWindow : Window {
 		if (outputs_str != null)
 			outputs_str = outputs.str;
 		return result;
+	}
+
+	private void infer_model_from_network() requires (m_network != null) {
+		// make a backup of the network reference as our GUI code may null it
+		var backup = m_network;
+
+		// first, clear out the current model
+		TreeIter? it;
+		if (!m_net_model.get_iter_first(out it))
+			return;
+		while (m_net_model.iter_next(ref it)) {
+			if (it != m_input_layer && it != m_output_layer)
+				m_net_model.remove(it);
+		}
+
+		// set the input and output parameters
+		m_glyph_size.value = Math.sqrt(m_network.inputs.size);
+		m_start_output.active = m_network.first_char - 32;
+		m_end_output.active = m_start_output.active + m_network.outputs.size - 1;
+
+		// now import all the hidden layers
+		for (int i = m_network.layers.size - 2; i > 0; --i) {
+			var layer = m_network.layers[i];
+			m_add.clicked();
+			m_layer_size.value = layer.size;
+			if (layer[0].is_tanh)
+				m_tanh.clicked();
+			else
+				m_linear.clicked();
+		}
+
+		// restore network reference from backup
+		m_network = backup;
 	}
 }
