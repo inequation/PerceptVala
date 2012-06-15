@@ -33,25 +33,27 @@ public class MainWindow : Window {
 	private Scale m_x_train_jitter;
 	private Scale m_y_train_jitter;
 	private Scale m_train_charsel;
+	private Scale m_train_noise;
+	private SpinButton m_rate;
+	private SpinButton m_momentum;
+	private SpinButton m_cycles;
+	private RadioButton m_random;
+	private RadioButton m_sequential;
 
 	// testing widgets
 	private FontButton m_test_font_button;
 	private Scale m_x_test_jitter;
 	private Scale m_y_test_jitter;
-	private Scale m_noise;
+	private Scale m_test_noise;
 	private CharacterRenderer m_testing_renderer;
 	private Scale m_test_charsel;
 	private Label m_test_result;
 	private SpinButton m_test_epsilon;
 
-	// training dialog widgets
-	private SpinButton m_rate;
-	private SpinButton m_cycles;
-	private RadioButton m_random;
-	private RadioButton m_sequential;
+	// training dialog
 	private bool m_break_training;
 
-	// testing dialog widgets
+	// testing dialog
 	private bool m_break_testing;
 
 	public NeuralNetwork? m_network;
@@ -433,7 +435,7 @@ public class MainWindow : Window {
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
-		grid.column_homogeneous = false;
+		grid.column_homogeneous = true;
 		grid.row_homogeneous = false;
 
 		grid.attach(new Label("Font"), 0, 0, 1, 1);
@@ -466,25 +468,38 @@ public class MainWindow : Window {
 		});
 		grid.attach(m_y_train_jitter, 1, 2, 1, 1);
 
-		grid.attach(new Label("Learning rate"), 0, 3, 1, 1);
+		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
+		m_train_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
+		m_train_noise.change_value.connect((scroll, new_value) => {
+			m_training_renderer.noise = (int)m_train_noise.adjustment.value;
+			return false;
+		});
+		grid.attach(m_train_noise, 1, 3, 1, 1);
+
+		grid.attach(new Label("Base learning rate"), 0, 4, 1, 1);
 		m_rate = new SpinButton.with_range(0.00001, 1.0, 0.00001);
 		m_rate.adjustment.value = 0.03;
-		grid.attach(m_rate, 1, 3, 1, 1);
+		grid.attach(m_rate, 1, 4, 1, 1);
 
-		grid.attach(new Label("Number of cycles"), 0, 4, 1, 1);
+		grid.attach(new Label("Momentum term"), 0, 5, 1, 1);
+		m_momentum = new SpinButton.with_range(-1.0, 1.0, 0.00001);
+		m_momentum.adjustment.value = 0.0005;
+		grid.attach(m_momentum, 1, 5, 1, 1);
+
+		grid.attach(new Label("Number of cycles"), 0, 6, 1, 1);
 		m_cycles = new SpinButton.with_range(1, 9999999, 1);
-		m_cycles.adjustment.value = 300;
-		grid.attach(m_cycles, 1, 4, 1, 1);
+		m_cycles.adjustment.value = 75;
+		grid.attach(m_cycles, 1, 6, 1, 1);
 
-		grid.attach(new Label("Example order"), 0, 5, 1, 2);
+		grid.attach(new Label("Example order"), 0, 7, 1, 2);
 		m_random = new RadioButton.with_label(null, "Random");
 		m_sequential = new RadioButton.with_label_from_widget(m_random,
 			"Sequential");
 		m_random.active = true;
-		grid.attach(m_random, 1, 5, 1, 1);
-		grid.attach(m_sequential, 1, 6, 1, 1);
+		grid.attach(m_random, 1, 7, 1, 1);
+		grid.attach(m_sequential, 1, 8, 1, 1);
 
-		grid.attach(new Label("Preview character code"), 0, 8, 1, 1);
+		grid.attach(new Label("Preview character code"), 0, 9, 1, 1);
 		m_train_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_train_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_train_charsel.set_increments(1, 10);
@@ -492,7 +507,7 @@ public class MainWindow : Window {
 			m_training_renderer.queue_draw();
 			return false;
 		});
-		grid.attach(m_train_charsel, 0, 9, 1, 1);
+		grid.attach(m_train_charsel, 0, 10, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -554,7 +569,7 @@ public class MainWindow : Window {
 
 			var target = new ArrayList<double?>();
 			for (int e = 0; e < examples; ++e)
-				target.add(0.0);
+				target.add(-1.0);
 
 			for (int c = 0; c < cycles; ++c) {
 				// stop if user clicked cancel
@@ -609,7 +624,8 @@ public class MainWindow : Window {
 					// set new target and learn, then reset the target array
 					target.set(t, 1.0);
 					try {
-						error += m_network.train(m_rate.value, target);
+						error += m_network.train(m_rate.value, m_momentum.value,
+							target);
 					} catch (ActivationError e) {
 						var msgbox = new MessageDialog(this,
 							DialogFlags.MODAL | DialogFlags.DESTROY_WITH_PARENT,
@@ -621,7 +637,7 @@ public class MainWindow : Window {
 						m_break_training = true;
 						break;
 					}
-					target.set(t, 0.0);
+					target.set(t, -1.0);
 				}
 				error /= (double)e;
 				error_plot.next_value(error);
@@ -639,10 +655,10 @@ public class MainWindow : Window {
 		});
 		subgrid.attach(train, 1, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 10, 1, 1);
+		grid.attach(subgrid, 0, 11, 2, 1);
 
 		var fixed = new Fixed();
-		grid.attach(fixed, 1, 8, 1, 2);
+		grid.attach(fixed, 1, 10, 1, 2);
 
 		m_training_renderer = new CharacterRenderer(
 			(FontChooser)m_train_font_button,
@@ -658,10 +674,10 @@ public class MainWindow : Window {
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
-		grid.column_homogeneous = false;
+		grid.column_homogeneous = true;
 		grid.row_homogeneous = false;
 
-		grid.attach(new Label("Font"), 0, 0, 2, 1);
+		grid.attach(new Label("Font"), 0, 0, 1, 1);
 		m_test_font_button = new FontButton();
 		m_test_font_button.use_font = true;
 		m_test_font_button.use_size = true;
@@ -671,35 +687,35 @@ public class MainWindow : Window {
 		m_test_font_button.font_set.connect(() => {
 			m_testing_renderer.queue_draw();
 		});
-		grid.attach(m_test_font_button, 2, 0, 1, 1);
+		grid.attach(m_test_font_button, 1, 0, 1, 1);
 
-		grid.attach(new Label("X jitter [%]"), 0, 1, 2, 1);
+		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
 		m_x_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_x_test_jitter.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.x_jitter = (int)m_x_test_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_x_test_jitter, 2, 1, 1, 1);
+		grid.attach(m_x_test_jitter, 1, 1, 1, 1);
 
-		grid.attach(new Label("Y jitter [%]"), 0, 2, 2, 1);
+		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
 		m_y_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_y_test_jitter.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.y_jitter = (int)m_y_test_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_y_test_jitter, 2, 2, 1, 1);
+		grid.attach(m_y_test_jitter, 1, 2, 1, 1);
 
-		grid.attach(new Label("Noise level [%]"), 0, 3, 2, 1);
-		m_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
-		m_noise.change_value.connect((scroll, new_value) => {
-			m_testing_renderer.noise = (int)m_noise.adjustment.value;
+		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
+		m_test_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
+		m_test_noise.change_value.connect((scroll, new_value) => {
+			m_testing_renderer.noise = (int)m_test_noise.adjustment.value;
 			return false;
 		});
-		grid.attach(m_noise, 2, 3, 1, 1);
+		grid.attach(m_test_noise, 1, 3, 1, 1);
 
-		grid.attach(new Label("Character"), 0, 4, 2, 2);
+		grid.attach(new Label("Character"), 0, 4, 1, 2);
 		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_test_charsel.set_increments(1, 10);
@@ -707,16 +723,16 @@ public class MainWindow : Window {
 			test_current_character();
 			return false;
 		});
-		grid.attach(m_test_charsel, 2, 5, 1, 1);
+		grid.attach(m_test_charsel, 1, 5, 1, 1);
 
-		grid.attach(new Label("Recognition epsilon"), 0, 6, 2, 1);
+		grid.attach(new Label("Recognition epsilon"), 0, 6, 1, 1);
 		m_test_epsilon = new SpinButton.with_range(0.0, 1.0, 0.00001);
 		m_test_epsilon.adjustment.value = 0.1;
-		grid.attach(m_test_epsilon, 2, 6, 1, 1);
+		grid.attach(m_test_epsilon, 1, 6, 1, 1);
 
-		grid.attach(new Label("Recognized character"), 0, 7, 2, 1);
+		grid.attach(new Label("Recognized character"), 0, 7, 1, 1);
 		m_test_result = new Label(" ");
-		grid.attach(m_test_result, 2, 7, 1, 1);
+		grid.attach(m_test_result, 1, 7, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -866,10 +882,10 @@ public class MainWindow : Window {
 		});
 		subgrid.attach(test, 2, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 8, 3, 1);
+		grid.attach(subgrid, 0, 8, 2, 1);
 
 		var fixed = new Fixed();
-		grid.attach(fixed, 2, 4, 1, 2);
+		grid.attach(fixed, 1, 4, 1, 2);
 
 		m_testing_renderer = new CharacterRenderer(
 			(FontChooser)m_test_font_button,

@@ -9,7 +9,7 @@ public errordomain ActivationError {
 
 public class Neuron {
 #if DEBUG
-	private static const double ACTIVATION_DANGER_THRESHOLD = 10.0;
+	private static const double ACTIVATION_DANGER_THRESHOLD = 2.0;
 #endif
 
 	/** Neuron connection. */
@@ -17,9 +17,15 @@ public class Neuron {
 		public Neuron? post;
 		public Neuron? ant;
 		public double weight;
-		public Synapse(Neuron? posterior, Neuron? anterior, double _weight) {
+		public double last_weight_update;
+		public Synapse(Neuron? posterior, Neuron? anterior) {
 			post = posterior;
 			ant = anterior;
+			last_weight_update = weight = 0.0;
+		}
+		public Synapse.with_weight(Neuron? posterior, Neuron? anterior,
+			double _weight) {
+			this(posterior, anterior);
 			weight = _weight;
 		}
 	}
@@ -51,8 +57,8 @@ public class Neuron {
 			// FIXME: report bug that is_infinity() returns int?
 			if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 				|| activation.is_nan() || (bool)activation.is_infinity()) {
-				if (!last_activation.is_nan()
-					&& !(bool)last_activation.is_infinity()) {
+				if (Math.fabs(last_activation) <= ACTIVATION_DANGER_THRESHOLD
+					&& !last_activation.is_nan() && !(bool)last_activation.is_infinity()) {
 					stdout.printf("get_signal(): Activation became %f in "
 						+ "synapse #%d after %f + w = %f * s = %f\n",
 						activation, i, last_activation, s.weight, sgnl);
@@ -85,8 +91,8 @@ public class Neuron {
 				// FIXME: report bug that is_infinity() returns int?
 				if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 					|| activation.is_nan() || (bool)activation.is_infinity()) {
-					if (!last_activation.is_nan()
-						&& !(bool)last_activation.is_infinity()) {
+					if (Math.fabs(last_activation) <= ACTIVATION_DANGER_THRESHOLD
+						&& !last_activation.is_nan() && !(bool)last_activation.is_infinity()) {
 						stdout.printf("get_signal_derivative(): Activation "
 							+ "became %f in synapse #%d after %f + w = %f\n",
 							activation, i, last_activation, s.weight);
@@ -115,8 +121,8 @@ public class Neuron {
 				// FIXME: report bug that is_infinity() returns int?
 				if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 					|| activation.is_nan() || (bool)activation.is_infinity()) {
-					if (!last_activation.is_nan()
-						&& !(bool)last_activation.is_infinity()) {
+					if (Math.fabs(last_activation) <= ACTIVATION_DANGER_THRESHOLD
+						&& !last_activation.is_nan() && !(bool)last_activation.is_infinity()) {
 						stdout.printf("get_signal_error(): Activation became "
 							+ "%f in synapse #%d after %f + w = %f * e = %f\n",
 							activation, i, last_activation, s.weight,
@@ -133,9 +139,18 @@ public class Neuron {
 		return activation;
 	}
 
-	public void update_weights(double rate) throws ActivationError {
+	public void update_weights(double rate, double momentum) throws ActivationError {
+		foreach (Synapse s in m_anterior) {
+			s.weight += rate * error * s.ant.get_signal()
+				+ momentum * s.last_weight_update;
+			s.last_weight_update = s.weight;
+		}
+	}
+
+	public void randomize_weights() {
+		double r = 1.0 / Math.sqrt((double)m_anterior.length);
 		foreach (Synapse s in m_anterior)
-			s.weight += rate * error * s.ant.get_signal();
+			s.weight = Random.double_range(-r, r);
 	}
 
 	public Synapse[] posterior_synapses { get { return m_posterior; } }

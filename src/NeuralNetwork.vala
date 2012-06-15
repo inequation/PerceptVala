@@ -21,8 +21,7 @@ public class NeuralNetwork {
 		for (uint i = 0; i < outputs; ++i)
 		{
 			var neuron = new Neuron(false);
-			neuron.add_synapse(new Neuron.Synapse(neuron, m_bias_neuron,
-				get_initial_weight()));
+			neuron.add_synapse(new Neuron.Synapse(neuron, m_bias_neuron));
 			m_outputs.add(neuron);
 		}
 		m_layers.insert(0, m_outputs);
@@ -46,12 +45,14 @@ public class NeuralNetwork {
 	public void insert_layer(ArrayList<Neuron> layer) {
 		foreach (Neuron n2 in layer) {
 			// add the bias neuron first
-			n2.add_synapse(new Neuron.Synapse(n2, m_bias_neuron,
-				get_initial_weight()));
+			n2.add_synapse(new Neuron.Synapse(n2, m_bias_neuron));
 			foreach (Neuron n1 in m_layers[0]) {
-				var s = new Neuron.Synapse(n1, n2, get_initial_weight());
+				var s = new Neuron.Synapse(n1, n2);
 				n1.add_synapse(s);
 				n2.add_synapse(s);
+				// now initialize synapse weights to random ones, with the range
+				// adjusted so that node paralysis and/or divergence is avoided
+				n1.randomize_weights();
 			}
 		}
 		m_layers.insert(0, layer);
@@ -76,11 +77,16 @@ public class NeuralNetwork {
 	/**
 	 * Trains the neural network with the given example.
 	 * @param rate		learning rate
+	 * @param momentum	momentum term
 	 * @param target	array of target weights to descend to
 	 * @return	the sum-squared error after the current training cycle
 	 */
-	public double train(double rate, ArrayList<double?> target)
+	public double train(double rate, double momentum, ArrayList<double?> target)
 		throws ActivationError {
+#if DEBUG && VERBOSE
+		stdout.printf("Training at %f\n", rate);
+#endif
+
 		// compute forward activation
 		var output = run();
 
@@ -103,7 +109,7 @@ public class NeuralNetwork {
 		// backpropagation - don't affect input and output layers
 		for (i = m_layers.size - 2; i > 0; --i) {
 #if DEBUG && VERBOSE
-			j = 0;
+			int j = 0;
 #endif
 			foreach (Neuron n in m_layers[i]) {
 				double der = n.get_signal_derivative();
@@ -118,27 +124,9 @@ public class NeuralNetwork {
 		}
 
 		// update weights
-#if DEBUG && VERBOSE
-		i = 0;
-#endif
-		foreach (ArrayList<Neuron> layer in m_layers) {
-#if DEBUG && VERBOSE
-			j = 0;
-#endif
-			foreach (Neuron n in layer) {
-#if DEBUG && VERBOSE
-				if (i > 0)
-					stdout.printf("layer: %d neuron: %d error: %f\n", i, j,
-						n.error);
-#endif
-				n.update_weights(rate);
-#if DEBUG && VERBOSE
-				++j;
-#endif
-			}
-#if DEBUG && VERBOSE
-			++i;
-#endif
+		for (i = m_layers.size - 1; i > 0; --i) {
+			foreach (Neuron n in m_layers[i])
+				n.update_weights(rate, momentum);
 		}
 
 		// calculate sum-squared error
@@ -152,12 +140,8 @@ public class NeuralNetwork {
 		return 0.5 * sse;
 	}
 
-	private double get_initial_weight() {
-		return 0.0;//Random.next_double() - 0.5;
-	}
-
 	public void serialize(string in_fname) {
-		assert(sizeof(double) == sizeof(uint32));
+		assert(sizeof(double) == sizeof(uint64));
 		string fname;
 		if (!in_fname.down().has_suffix(".net"))
 			fname = "%s.net".printf(in_fname);
@@ -191,7 +175,7 @@ public class NeuralNetwork {
 						if (k == 0)
 							assert(s.ant == m_bias_neuron);
 						double? w = s.weight;
-						dos.put_uint32(*((uint32 *)w));
+						dos.put_uint64(*((uint64 *)w));
 						++k;
 					}
 				}
@@ -207,7 +191,7 @@ public class NeuralNetwork {
 
 	public static NeuralNetwork? deserialize(string fname) {
 		NeuralNetwork? net = null;
-		assert(sizeof(double) == sizeof(uint32));
+		assert(sizeof(double) == sizeof(uint64));
 		try {
 			stdout.printf("Deserializing network from file %s\n", fname);
 			var f = File.new_for_path(fname);
@@ -235,8 +219,9 @@ public class NeuralNetwork {
 					layer.add(neuron);
 					var num_synapses = dis.read_int32();
 					for (int k = 0; k < num_synapses; ++k) {
-						uint32? w_as_int = dis.read_uint32();
-						neuron.add_synapse(new Neuron.Synapse(neuron,
+						uint64? w_as_int = dis.read_uint64();
+						neuron.add_synapse(new Neuron.Synapse.with_weight
+							(neuron,
 							// first synapse always leads to the bias neuron
 							k == 0 ? m_bias_neuron : null,
 							*(double *)w_as_int));
