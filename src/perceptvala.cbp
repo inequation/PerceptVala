@@ -39,6 +39,7 @@
 		</Compiler>
 		<Unit filename="BiasNeuron.vala" />
 		<Unit filename="CharacterRenderer.vala" />
+		<Unit filename="ErrorPlotRenderer.vala" />
 		<Unit filename="ImagePixel.vala">
 			<Option target="debug" />
 			<Option target="release" />
