@@ -439,8 +439,9 @@ public class MainWindow : Window {
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
-		grid.column_homogeneous = true;
+		grid.column_homogeneous = false;
 		grid.row_homogeneous = false;
+		grid.expand = true;
 
 		grid.attach(new Label("Font"), 0, row, 1, 1);
 		m_train_font_button = new FontButton();
@@ -711,18 +712,29 @@ public class MainWindow : Window {
 			(int)m_glyph_size.adjustment.value);
 		fixed.put(m_training_renderer, 0, 0);
 
+		// make sure the right side is expanded
+		for (int i = 0; i <= row; ++i) {
+			var widget = grid.get_child_at(1, i);
+			if (widget == null)
+				continue;
+			widget.expand = true;
+		}
+
 		return grid;
 	}
 
 	private Widget create_testing_page() {
+		int row = 0;
+
 		var grid = new Grid();
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
-		grid.column_homogeneous = true;
+		grid.column_homogeneous = false;
 		grid.row_homogeneous = false;
+		grid.expand = true;
 
-		grid.attach(new Label("Font"), 0, 0, 1, 1);
+		grid.attach(new Label("Font"), 0, row, 1, 1);
 		m_test_font_button = new FontButton();
 		m_test_font_button.use_font = true;
 		m_test_font_button.use_size = true;
@@ -732,35 +744,35 @@ public class MainWindow : Window {
 		m_test_font_button.font_set.connect(() => {
 			m_testing_renderer.queue_draw();
 		});
-		grid.attach(m_test_font_button, 1, 0, 1, 1);
+		grid.attach(m_test_font_button, 1, row, 1, 1);
 
-		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
+		grid.attach(new Label("X jitter [%]"), 0, ++row, 1, 1);
 		m_x_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_x_test_jitter.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.x_jitter = (int)m_x_test_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_x_test_jitter, 1, 1, 1, 1);
+		grid.attach(m_x_test_jitter, 1, row, 1, 1);
 
-		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
+		grid.attach(new Label("Y jitter [%]"), 0, ++row, 1, 1);
 		m_y_test_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_y_test_jitter.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.y_jitter = (int)m_y_test_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_y_test_jitter, 1, 2, 1, 1);
+		grid.attach(m_y_test_jitter, 1, row, 1, 1);
 
-		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
+		grid.attach(new Label("Noise level [%]"), 0, ++row, 1, 1);
 		m_test_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
 		m_test_noise.change_value.connect((scroll, new_value) => {
 			m_testing_renderer.noise = (int)m_test_noise.adjustment.value;
 			return false;
 		});
-		grid.attach(m_test_noise, 1, 3, 1, 1);
+		grid.attach(m_test_noise, 1, row, 1, 1);
 
-		grid.attach(new Label("Character"), 0, 4, 1, 2);
+		grid.attach(new Label("Character"), 0, ++row, 1, 2);
 		m_test_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_test_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_test_charsel.set_increments(1, 10);
@@ -768,16 +780,18 @@ public class MainWindow : Window {
 			test_current_character();
 			return false;
 		});
-		grid.attach(m_test_charsel, 1, 5, 1, 1);
+		var fixed = new Fixed();
+		grid.attach(fixed, 1, row, 1, 2);
+		grid.attach(m_test_charsel, 1, ++row, 1, 1);
 
-		grid.attach(new Label("Step detection epsilon"), 0, 6, 1, 1);
+		grid.attach(new Label("Step detection epsilon"), 0, ++row, 1, 1);
 		m_test_epsilon = new SpinButton.with_range(0.0, 1.0, 0.00001);
 		m_test_epsilon.adjustment.value = 0.3;
-		grid.attach(m_test_epsilon, 1, 6, 1, 1);
+		grid.attach(m_test_epsilon, 1, row, 1, 1);
 
-		grid.attach(new Label("Recognized character"), 0, 7, 1, 1);
+		grid.attach(new Label("Recognized character"), 0, ++row, 1, 1);
 		m_test_result = new Label(" ");
-		grid.attach(m_test_result, 1, 7, 1, 1);
+		grid.attach(m_test_result, 1, row, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -928,16 +942,21 @@ public class MainWindow : Window {
 		});
 		subgrid.attach(test, 2, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 8, 2, 1);
-
-		var fixed = new Fixed();
-		grid.attach(fixed, 1, 4, 1, 2);
+		grid.attach(subgrid, 0, ++row, 2, 1);
 
 		m_testing_renderer = new CharacterRenderer(
 			(FontChooser)m_test_font_button,
 			() => {return (unichar)(m_test_charsel.adjustment.value);},
 			(int)m_glyph_size.adjustment.value);
 		fixed.put(m_testing_renderer, 0, 0);
+
+		// make sure the right side is expanded
+		for (int i = 0; i <= row; ++i) {
+			var widget = grid.get_child_at(1, i);
+			if (widget == null)
+				continue;
+			widget.expand = true;
+		}
 
 		return grid;
 	}
