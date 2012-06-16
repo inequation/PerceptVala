@@ -39,6 +39,7 @@ public class MainWindow : Window {
 	private SpinButton m_cycles;
 	private RadioButton m_random;
 	private RadioButton m_sequential;
+	private CheckButton m_bold_driver;
 
 	// testing widgets
 	private FontButton m_test_font_button;
@@ -481,23 +482,32 @@ public class MainWindow : Window {
 		m_rate.adjustment.value = 0.25;
 		grid.attach(m_rate, 1, 4, 1, 1);
 
-		grid.attach(new Label("Momentum term"), 0, 5, 1, 1);
+		grid.attach(new Label("Learning rate adaptation"), 0, 5, 1, 1);
+		var box = new Box(Orientation.HORIZONTAL, 5);
+		m_bold_driver = new CheckButton.with_label("Bold driver");
+		m_bold_driver.active = true;
+		box.pack_end(m_bold_driver);
+		grid.attach(box, 1, 5, 1, 1);
+
+		grid.attach(new Label("Momentum term"), 0, 6, 1, 1);
 		m_momentum = new SpinButton.with_range(-1.0, 1.0, 0.00001);
 		m_momentum.adjustment.value = 0.0007;
-		grid.attach(m_momentum, 1, 5, 1, 1);
+		grid.attach(m_momentum, 1, 6, 1, 1);
 
-		grid.attach(new Label("Number of cycles"), 0, 6, 1, 1);
+		grid.attach(new Label("Number of cycles"), 0, 7, 1, 1);
 		m_cycles = new SpinButton.with_range(1, 9999999, 1);
 		m_cycles.adjustment.value = 65;
-		grid.attach(m_cycles, 1, 6, 1, 1);
+		grid.attach(m_cycles, 1, 7, 1, 1);
 
-		grid.attach(new Label("Example order"), 0, 7, 1, 2);
+		grid.attach(new Label("Example order"), 0, 8, 1, 1);
 		m_random = new RadioButton.with_label(null, "Random");
 		m_sequential = new RadioButton.with_label_from_widget(m_random,
 			"Sequential");
 		m_random.active = true;
-		grid.attach(m_random, 1, 7, 1, 1);
-		grid.attach(m_sequential, 1, 8, 1, 1);
+		box = new Box(Orientation.HORIZONTAL, 5);
+		grid.attach(box, 1, 8, 1, 1);
+		box.pack_end(m_random);
+		box.pack_end(m_sequential);
 
 		grid.attach(new Label("Preview character code"), 0, 9, 1, 1);
 		m_train_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
