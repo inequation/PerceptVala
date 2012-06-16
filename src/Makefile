@@ -26,6 +26,8 @@ EXEC_EXT =
 # End of configuration
 # =============================================================================
 
+SOURCES=Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
+
 all: release
 
 cleandebug: clean
@@ -37,20 +39,20 @@ clean:
 	rm -f perceptvala *.vala.c
 
 # recursively call make with proper flags
-release:
+release: $(SOURCES)
 	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert -X -O3"
 	$(MKDIR_P) $(RELEASE_DIST_DIR)
 	mv perceptvala $(RELEASE_DIST_DIR)
 
 # recursively call make with proper flags
-debug:
+debug: $(SOURCES)
 	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) -g --save-temps -D DEBUG"
 	$(MKDIR_P) $(DEBUG_DIST_DIR)
 	mv perceptvala $(DEBUG_DIST_DIR)
 
 # recursively call make with proper flags
-debug-verbose:
+debug-verbose: $(SOURCES)
 	$(MAKE) debug VALACFLAGS="$(VALACFLAGS) -D VERBOSE"
 
-perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
-	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
+perceptvala: $(SOURCES)
+	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) $(SOURCES)

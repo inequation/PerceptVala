@@ -13,7 +13,7 @@ public class ErrorPlotRenderer : Gtk.Misc {
 	private double m_x;
 	private double m_y;
 	private double m_x_step;
-	private double m_y_step;
+	private double m_y_scale;
 
 	public ErrorPlotRenderer(int width, int height, double max_error, int num_ticks) {
 		width_request = width;
@@ -31,11 +31,10 @@ public class ErrorPlotRenderer : Gtk.Misc {
 		// prepare for drawing
 		m_ctx.translate(0.0, (double)height);
 		double xscale = (double)width / (double)num_ticks;
-		double yscale = (double)height / (double)max_error;
-		m_x_step = xscale / yscale;
-		m_y_step = 1.0 / yscale;
-		m_ctx.set_line_width(1.0 / yscale);
-		m_ctx.scale(yscale, -yscale);
+		m_y_scale = (double)height / (double)max_error;
+		m_x_step = xscale / m_y_scale;
+		m_ctx.set_line_width(1.0 / m_y_scale);
+		m_ctx.scale(m_y_scale, -m_y_scale);
 		m_ctx.set_source_rgb(1, 0, 0);
 	}
 
@@ -44,7 +43,7 @@ public class ErrorPlotRenderer : Gtk.Misc {
 			m_y = (double)error_value;
 			m_ctx.set_source_rgb(0, 0, 1);
 			m_ctx.move_to(0.0, m_y);
-			m_ctx.line_to(width_request * m_y_step, m_y);
+			m_ctx.line_to(width_request / m_y_scale, m_y);
 			m_ctx.stroke();
 			m_ctx.set_source_rgb(1, 0, 0);
 		}
@@ -59,9 +58,9 @@ public class ErrorPlotRenderer : Gtk.Misc {
 			m_ctx.set_source_rgb(0, 0.8, 0);
 		else
 			m_ctx.set_source_rgb(0.8, 0, 0);
-		m_ctx.rectangle(m_x - 3.0 * m_x_step * m_y_step, m_y - 1.5 * m_y_step,
-			6.0 * m_x_step * m_y_step, 3.0 * m_y_step);
-		m_ctx.stroke();
+		m_ctx.rectangle(m_x - 2.0 / m_y_scale, m_y - 2.0 / m_y_scale,
+			4.0 / m_y_scale, 4.0 / m_y_scale);
+		m_ctx.fill();
 		m_ctx.set_source_rgb(1, 0, 0);
 	}
 

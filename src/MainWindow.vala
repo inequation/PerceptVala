@@ -482,7 +482,7 @@ public class MainWindow : Window {
 
 		grid.attach(new Label("Base learning rate"), 0, ++row, 1, 1);
 		m_rate = new SpinButton.with_range(0.00001, 1.0, 0.00001);
-		m_rate.adjustment.value = 0.25;
+		m_rate.adjustment.value = 0.05;
 		grid.attach(m_rate, 1, row, 1, 1);
 
 		grid.attach(new Label("Learning rate adaptation"), 0, ++row, 1, 1);
@@ -498,12 +498,12 @@ public class MainWindow : Window {
 
 		grid.attach(new Label("Momentum term"), 0, ++row, 1, 1);
 		m_momentum = new SpinButton.with_range(-1.0, 1.0, 0.00001);
-		m_momentum.adjustment.value = 0.0007;
+		m_momentum.adjustment.value = 0.9;
 		grid.attach(m_momentum, 1, row, 1, 1);
 
 		grid.attach(new Label("Number of cycles"), 0, ++row, 1, 1);
 		m_cycles = new SpinButton.with_range(1, 9999999, 1);
-		m_cycles.adjustment.value = 65;
+		m_cycles.adjustment.value = 40;
 		grid.attach(m_cycles, 1, row, 1, 1);
 
 		grid.attach(new Label("Example order"), 0, ++row, 1, 1);
@@ -560,8 +560,8 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240,
-				examples, cycles);
+			var error_plot = new ErrorPlotRenderer(800, 240, 4.0 * examples,
+				cycles);
 			contents.add(error_plot);
 
 			var total_progbar = new ProgressBar();
@@ -770,9 +770,9 @@ public class MainWindow : Window {
 		});
 		grid.attach(m_test_charsel, 1, 5, 1, 1);
 
-		grid.attach(new Label("Recognition epsilon"), 0, 6, 1, 1);
+		grid.attach(new Label("Step detection epsilon"), 0, 6, 1, 1);
 		m_test_epsilon = new SpinButton.with_range(0.0, 1.0, 0.00001);
-		m_test_epsilon.adjustment.value = 0.1;
+		m_test_epsilon.adjustment.value = 0.3;
 		grid.attach(m_test_epsilon, 1, 6, 1, 1);
 
 		grid.attach(new Label("Recognized character"), 0, 7, 1, 1);
@@ -825,8 +825,8 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240,
-				Math.sqrt(examples * 4.0), examples);
+			var error_plot = new ErrorPlotRenderer(800, 240, 4.0 * examples,
+				examples);
 			contents.add(error_plot);
 
 			var progbar = new ProgressBar();
@@ -1007,13 +1007,13 @@ public class MainWindow : Window {
 		}
 		switch (result) {
 			case -2:
-				m_test_result.set_text("not recognized [error: %f]".printf(err));
+				m_test_result.set_text("not recognized [SSE: %f]".printf(err));
 				break;
 			case -1:
-				m_test_result.set_text("ambiguous: %s [error: %f]".printf(outputs, err));
+				m_test_result.set_text("ambiguous: %s [SSE: %f]".printf(outputs, err));
 				break;
 			default:
-				m_test_result.set_text("#%u: '%c', [error: %f]".printf(result,
+				m_test_result.set_text("#%u: '%c', [SSE: %f]".printf(result,
 					(char)(32 + m_start_output.active + result), err));
 				break;
 		}
@@ -1048,8 +1048,7 @@ public class MainWindow : Window {
 			sse += diff * diff;
 			++counter;
 		}
-		if (outputs_str != null)
-			outputs_str = outputs.str;
+		outputs_str = outputs.str;
 		error = 0.5 * sse;
 		return result;
 	}

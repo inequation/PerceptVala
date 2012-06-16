@@ -44,7 +44,7 @@ public class Neuron {
 
 	public virtual double get_signal() throws ActivationError {
 		double activation = 0.0;
-#if DEBUG
+#if DEBUG && VERBOSE
 		int i = 0;
 		double last_activation = activation;
 #endif
@@ -80,7 +80,7 @@ public class Neuron {
 			return 1.0 - y * y;
 		}
 		double activation = 0.0;
-#if DEBUG
+#if DEBUG && VERBOSE
 		int i = 0;
 		double last_activation = activation;
 #endif
@@ -110,7 +110,7 @@ public class Neuron {
 
 	public double get_signal_error() throws ActivationError {
 		double activation = 0.0;
-#if DEBUG
+#if DEBUG && VERBOSE
 		int i = 0;
 		double last_activation = activation;
 #endif
