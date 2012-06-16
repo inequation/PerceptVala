@@ -17,7 +17,6 @@ public class CharacterRenderer : Gtk.Misc {
 	private int m_y_jitter;
 	private int m_noise;
 
-	//private uchar[] m_pixels;
 	private ImageSurface m_surf;
 	private Cairo.Context m_ctx;
 	private Pango.Layout m_playout;

@@ -52,5 +52,5 @@ debug:
 debug-verbose:
 	$(MAKE) debug VALACFLAGS="$(VALACFLAGS) -D VERBOSE"
 
-perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala
-	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala
+perceptvala: Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
+	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
