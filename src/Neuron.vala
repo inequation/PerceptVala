@@ -53,7 +53,7 @@ public class Neuron {
 			if (m_is_tanh)
 				sgnl = Math.tanh(sgnl);
 			activation += s.weight * sgnl;
-#if DEBUG
+#if DEBUG && VERBOSE
 			// FIXME: report bug that is_infinity() returns int?
 			if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 				|| activation.is_nan() || (bool)activation.is_infinity()) {
@@ -87,7 +87,7 @@ public class Neuron {
 		foreach (Synapse s in m_anterior) {
 			if (!s.ant.is_bias_neuron()) {
 				activation += s.weight;
-#if DEBUG
+#if DEBUG && VERBOSE
 				// FIXME: report bug that is_infinity() returns int?
 				if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 					|| activation.is_nan() || (bool)activation.is_infinity()) {
@@ -117,7 +117,7 @@ public class Neuron {
 		foreach (Synapse s in m_posterior) {
 			if (!s.post.is_bias_neuron()) {
 				activation += s.weight * s.post.error;
-#if DEBUG
+#if DEBUG && VERBOSE
 				// FIXME: report bug that is_infinity() returns int?
 				if (Math.fabs(activation) > ACTIVATION_DANGER_THRESHOLD
 					|| activation.is_nan() || (bool)activation.is_infinity()) {
@@ -157,9 +157,10 @@ public class Neuron {
 			* Math.sqrt(get_error_variance()));
 
 		foreach (Synapse s in m_anterior) {
-			s.weight += local_rate * error * s.ant.get_signal()
+			var update = local_rate * error * s.ant.get_signal()
 				+ momentum * s.last_weight_update;
-			s.last_weight_update = s.weight;
+			s.weight += update;
+			s.last_weight_update = update;
 		}
 	}
 
@@ -167,6 +168,15 @@ public class Neuron {
 		double r = 1.0 / Math.sqrt((double)m_anterior.length);
 		foreach (Synapse s in m_anterior)
 			s.weight = Random.double_range(-r, r);
+	}
+
+	public void rollback_last_update() {
+		foreach (Synapse s in m_anterior) {
+			s.weight -= s.last_weight_update;
+			// clear out the last update - this disables momentum for the next
+			// epoch, but prevents bugs
+			s.last_weight_update = 0.0;
+		}
 	}
 
 	public Synapse[] posterior_synapses { get { return m_posterior; } }

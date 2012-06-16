@@ -40,6 +40,7 @@ public class MainWindow : Window {
 	private RadioButton m_random;
 	private RadioButton m_sequential;
 	private CheckButton m_bold_driver;
+	private SpinButton m_annealing;
 
 	// testing widgets
 	private FontButton m_test_font_button;
@@ -432,6 +433,8 @@ public class MainWindow : Window {
 	}
 
 	private Widget create_training_page() {
+		int row = 0;
+
 		var grid = new Grid();
 
 		grid.column_spacing = 5;
@@ -439,7 +442,7 @@ public class MainWindow : Window {
 		grid.column_homogeneous = true;
 		grid.row_homogeneous = false;
 
-		grid.attach(new Label("Font"), 0, 0, 1, 1);
+		grid.attach(new Label("Font"), 0, row, 1, 1);
 		m_train_font_button = new FontButton();
 		m_train_font_button.use_font = true;
 		m_train_font_button.use_size = true;
@@ -449,67 +452,71 @@ public class MainWindow : Window {
 		m_train_font_button.font_set.connect(() => {
 			m_training_renderer.queue_draw();
 		});
-		grid.attach(m_train_font_button, 1, 0, 1, 1);
+		grid.attach(m_train_font_button, 1, row, 1, 1);
 
-		grid.attach(new Label("X jitter [%]"), 0, 1, 1, 1);
+		grid.attach(new Label("X jitter [%]"), 0, ++row, 1, 1);
 		m_x_train_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_x_train_jitter.change_value.connect((scroll, new_value) => {
 			m_training_renderer.x_jitter = (int)m_x_train_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_x_train_jitter, 1, 1, 1, 1);
+		grid.attach(m_x_train_jitter, 1, row, 1, 1);
 
-		grid.attach(new Label("Y jitter [%]"), 0, 2, 1, 1);
+		grid.attach(new Label("Y jitter [%]"), 0, ++row, 1, 1);
 		m_y_train_jitter = new Scale.with_range(Orientation.HORIZONTAL,
 			0, 100, 1);
 		m_y_train_jitter.change_value.connect((scroll, new_value) => {
 			m_training_renderer.y_jitter = (int)m_y_train_jitter.adjustment.value;
 			return false;
 		});
-		grid.attach(m_y_train_jitter, 1, 2, 1, 1);
+		grid.attach(m_y_train_jitter, 1, row, 1, 1);
 
-		grid.attach(new Label("Noise level [%]"), 0, 3, 1, 1);
+		grid.attach(new Label("Noise level [%]"), 0, ++row, 1, 1);
 		m_train_noise = new Scale.with_range(Orientation.HORIZONTAL, 0, 100, 1);
 		m_train_noise.change_value.connect((scroll, new_value) => {
 			m_training_renderer.noise = (int)m_train_noise.adjustment.value;
 			return false;
 		});
-		grid.attach(m_train_noise, 1, 3, 1, 1);
+		grid.attach(m_train_noise, 1, row, 1, 1);
 
-		grid.attach(new Label("Base learning rate"), 0, 4, 1, 1);
+		grid.attach(new Label("Base learning rate"), 0, ++row, 1, 1);
 		m_rate = new SpinButton.with_range(0.00001, 1.0, 0.00001);
 		m_rate.adjustment.value = 0.25;
-		grid.attach(m_rate, 1, 4, 1, 1);
+		grid.attach(m_rate, 1, row, 1, 1);
 
-		grid.attach(new Label("Learning rate adaptation"), 0, 5, 1, 1);
+		grid.attach(new Label("Learning rate adaptation"), 0, ++row, 1, 1);
 		var box = new Box(Orientation.HORIZONTAL, 5);
 		m_bold_driver = new CheckButton.with_label("Bold driver");
-		m_bold_driver.active = true;
-		box.pack_end(m_bold_driver);
-		grid.attach(box, 1, 5, 1, 1);
+		m_bold_driver.active = false;
+		m_annealing = new SpinButton.with_range(0, 9999999, 1);
+		m_annealing.adjustment.value = 0;
+		box.pack_start(m_bold_driver);
+		box.pack_start(new Label("Annealing T:"));
+		box.pack_start(m_annealing);
+		grid.attach(box, 1, row, 1, 1);
 
-		grid.attach(new Label("Momentum term"), 0, 6, 1, 1);
+		grid.attach(new Label("Momentum term"), 0, ++row, 1, 1);
 		m_momentum = new SpinButton.with_range(-1.0, 1.0, 0.00001);
 		m_momentum.adjustment.value = 0.0007;
-		grid.attach(m_momentum, 1, 6, 1, 1);
+		grid.attach(m_momentum, 1, row, 1, 1);
 
-		grid.attach(new Label("Number of cycles"), 0, 7, 1, 1);
+		grid.attach(new Label("Number of cycles"), 0, ++row, 1, 1);
 		m_cycles = new SpinButton.with_range(1, 9999999, 1);
 		m_cycles.adjustment.value = 65;
-		grid.attach(m_cycles, 1, 7, 1, 1);
+		grid.attach(m_cycles, 1, row, 1, 1);
 
-		grid.attach(new Label("Example order"), 0, 8, 1, 1);
+		grid.attach(new Label("Example order"), 0, ++row, 1, 1);
 		m_random = new RadioButton.with_label(null, "Random");
 		m_sequential = new RadioButton.with_label_from_widget(m_random,
 			"Sequential");
 		m_random.active = true;
 		box = new Box(Orientation.HORIZONTAL, 5);
-		grid.attach(box, 1, 8, 1, 1);
 		box.pack_end(m_random);
 		box.pack_end(m_sequential);
+		grid.attach(box, 1, row, 1, 1);
 
-		grid.attach(new Label("Preview character code"), 0, 9, 1, 1);
+		grid.attach(new Label("Preview character code"), 0, ++row, 1, 1);
 		m_train_charsel = new Scale.with_range(Orientation.HORIZONTAL, 32, 255, 1);
 		m_train_charsel.width_request = CHARSEL_WIDTH_REQUEST;
 		m_train_charsel.set_increments(1, 10);
@@ -517,7 +524,11 @@ public class MainWindow : Window {
 			m_training_renderer.queue_draw();
 			return false;
 		});
-		grid.attach(m_train_charsel, 0, 10, 1, 1);
+
+		var fixed = new Fixed();
+		grid.attach(fixed, 1, row, 1, 2);
+
+		grid.attach(m_train_charsel, 0, ++row, 1, 1);
 
 		var subgrid = new Grid();
 		subgrid.column_spacing = 5;
@@ -550,7 +561,7 @@ public class MainWindow : Window {
 			Container buttons = (Container)td.get_action_area();
 
 			var error_plot = new ErrorPlotRenderer(800, 240,
-				Math.sqrt(examples * 4.0), cycles);
+				examples, cycles);
 			contents.add(error_plot);
 
 			var total_progbar = new ProgressBar();
@@ -582,12 +593,19 @@ public class MainWindow : Window {
 			for (int e = 0; e < examples; ++e)
 				target.add(-1.0);
 
+			double rate = m_rate.value;
+
 			for (int c = 0; c < cycles; ++c) {
 				// stop if user clicked cancel
 				if (m_break_training)
 					break;
 
-				stdout.printf("Training cycle #%d at rate %f\n", c, m_rate.value);
+				// apply annealing
+				if (m_annealing.value > 0)
+					rate = m_rate.value
+						/ (1.0 + (double)m_network.age / m_annealing.value);
+
+				stdout.printf("Training cycle #%d at rate %f\n", c, rate);
 
 				// define an example visiting order, random or sequential
 				ArrayList<int> order = new ArrayList<int>();
@@ -606,6 +624,7 @@ public class MainWindow : Window {
 				}
 
 				var error = 0.0;
+				var last_error = error;
 
 				int e;
 				for (e = 0; e < examples; ++e) {
@@ -635,7 +654,7 @@ public class MainWindow : Window {
 					// set new target and learn, then reset the target array
 					target.set(t, 1.0);
 					try {
-						error += m_network.train(m_rate.value, m_momentum.value,
+						error += m_network.train(rate, m_momentum.value,
 							target);
 					} catch (ActivationError e) {
 						var msgbox = new MessageDialog(this,
@@ -650,9 +669,27 @@ public class MainWindow : Window {
 					}
 					target.set(t, -1.0);
 				}
-				error /= (double)e;
+				error *= 0.5;
 				error_plot.next_value(error);
 				error_plot.queue_draw();
+
+				// apply the bold driver algorithm
+				if (m_bold_driver.active && c > 0) {
+					stdout.printf("Error delta: %f -> ", error - last_error);
+					if (error <= last_error) {
+						// if the error has decreased, increase the rate by 3%
+						rate *= 1.03;
+						stdout.printf("increasing rate: %f\n", rate);
+					} else {
+						// otherwise cut the rate sharply and roll back the last
+						// weight update; don't let it get too small, though
+						m_network.rollback_last_update();
+						rate = Math.fmax(rate * 0.5, m_rate.value * 0.01);
+						stdout.printf("cutting rate: %f\n", rate);
+					}
+				}
+
+				last_error = error;
 			}
 			error_plot.queue_draw();
 
@@ -666,10 +703,7 @@ public class MainWindow : Window {
 		});
 		subgrid.attach(train, 1, 0, 1, 1);
 
-		grid.attach(subgrid, 0, 11, 2, 1);
-
-		var fixed = new Fixed();
-		grid.attach(fixed, 1, 10, 1, 2);
+		grid.attach(subgrid, 0, ++row, 2, 1);
 
 		m_training_renderer = new CharacterRenderer(
 			(FontChooser)m_train_font_button,

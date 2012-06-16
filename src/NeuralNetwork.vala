@@ -9,6 +9,7 @@ public class NeuralNetwork {
 	private ArrayList<Neuron> m_outputs;
 	private ArrayList<ArrayList<Neuron>> m_layers;
 	private uint8 m_first_char;
+	private uint m_age;
 	private static BiasNeuron m_bias_neuron = new BiasNeuron();
 
 	/**
@@ -36,6 +37,7 @@ public class NeuralNetwork {
 		m_outputs = new ArrayList<Neuron>();
 		m_layers = new ArrayList<ArrayList<Neuron>>();
 		m_first_char = first_char;
+		m_age = 0;
 	}
 
 	/**
@@ -137,7 +139,17 @@ public class NeuralNetwork {
 			sse += diff * diff;
 			++i;
 		}
-		return 0.5 * sse;
+
+		++m_age;
+
+		return sse;
+	}
+
+	public void rollback_last_update() {
+		for (int i = m_layers.size - 1; i > 0; --i) {
+			foreach (Neuron n in m_layers[i])
+				n.rollback_last_update();
+		}
 	}
 
 	public void serialize(string in_fname) {
@@ -158,7 +170,7 @@ public class NeuralNetwork {
 			dos.set_byte_order(DataStreamByteOrder.LITTLE_ENDIAN);
 
 			dos.put_byte(m_first_char);
-
+			dos.put_uint32((uint32)m_age);
 			dos.put_int32(m_layers.size);
 			// iterate over all layers from output to the first hidden layer
 			for (int i = m_layers.size - 1; i > 0; --i) {
@@ -205,6 +217,8 @@ public class NeuralNetwork {
 
 			net = new NeuralNetwork.no_init(dis.read_byte());
 			assert(net != null);
+
+			net.m_age = dis.read_int32();
 
 			// create all the layers; synapses will be disconnected at first,
 			// we'll reconstruct the network after all file reading is done
@@ -327,6 +341,12 @@ public class NeuralNetwork {
 	public uint8 first_char {
 		get {
 			return m_first_char;
+		}
+	}
+
+	public uint age {
+		get {
+			return m_age;
 		}
 	}
 }
