@@ -60,7 +60,6 @@
 			<Option target="debug" />
 			<Option target="release" />
 		</Unit>
-		<Unit filename="TrainingDialog.vala" />
 		<Extensions>
 			<code_completion />
 			<envvars />
