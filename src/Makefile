@@ -38,9 +38,10 @@ C_SOURCES=Main.c MainWindow.c Image.c ImagePixel.c Neuron.c NeuralNetwork.c Char
 
 MINGW_FLAGS_GLIB=`$(MINGW_PKG_CONFIG) glib-2.0 --cflags --libs`
 MINGW_FLAGS_GTK=`$(MINGW_PKG_CONFIG) gtk+-3.0 --cflags --libs`
-MINGW_FLAGS_GDK=`$(MINGW_PKG_CONFIG) gdk-win32-2.0 --cflags --libs`
-MINGW_FLAGS_GDK=`$(MINGW_PKG_CONFIG) atk --cflags --libs`
-MINGW_CFLAGS_ACTUAL=$(MINGW_CFLAGS) $(MINGW_FLAGS_GLIB) $(MINGW_FLAGS_GTK) $(MINGW_FLAGS_GDK)
+MINGW_FLAGS_ATK=`$(MINGW_PKG_CONFIG) atk --cflags --libs`
+MINGW_FLAGS_GEE=`$(MINGW_PKG_CONFIG) gee-1.0 --cflags --libs`
+MINGW_FLAGS_CAIRO=`$(MINGW_PKG_CONFIG) cairo --cflags --libs`
+MINGW_CFLAGS_ACTUAL=$(MINGW_CFLAGS) $(MINGW_FLAGS_GLIB) $(MINGW_FLAGS_GTK) $(MINGW_FLAGS_ATK) $(MINGW_FLAGS_GEE) $(MINGW_FLAGS_CAIRO)
 
 all: release
 
@@ -54,7 +55,10 @@ clean:
 
 cross-win32: $(SOURCES)
 	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert -C"
-	$(MINGW_GCC) $(MINGW_CFLAGS_ACTUAL) $(C_SOURCES) -o perceptvala.exe
+	$(MINGW_GCC) $(C_SOURCES) -o perceptvala.exe $(MINGW_CFLAGS_ACTUAL)
+	rm $(C_SOURCES)
+	$(MKDIR_P) $(RELEASE_DIST_DIR)/win32
+	mv perceptvala.exe $(RELEASE_DIST_DIR)/win32
 
 # recursively call make with proper flags
 release: $(SOURCES)
