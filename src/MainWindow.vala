@@ -561,9 +561,24 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240, 4.0 * examples,
-				cycles);
-			contents.add(error_plot);
+			var err_grid = new Grid();
+			var max_error = 4.0 * examples;
+			// create all the plot labels
+			err_grid.attach(new Label("%.1f".printf(max_error)), 0, 0, 1, 1);
+			var label = new Label("Sum-squared error");
+			label.expand = true;
+			label.angle = 90;
+			err_grid.attach(label, 0, 1, 1, 1);
+			err_grid.attach(new Label("%.1f".printf(0.0)), 0, 2, 1, 1);
+			err_grid.attach(new Label("0"), 1, 3, 1, 1);
+			label = new Label("Epoch (cycle)");
+			label.expand = true;
+			err_grid.attach(label, 2, 3, 1, 1);
+			err_grid.attach(new Label("%d".printf(cycles)), 3, 3, 1, 1);
+			// create the actual plot
+			var error_plot = new ErrorPlotRenderer(800, 240, max_error, cycles);
+			err_grid.attach(error_plot, 1, 0, 3, 3);
+			contents.add(err_grid);
 
 			var total_progbar = new ProgressBar();
 			total_progbar.width_request = 320;
@@ -839,9 +854,24 @@ public class MainWindow : Window {
 			var contents = td.get_content_area();
 			Container buttons = (Container)td.get_action_area();
 
-			var error_plot = new ErrorPlotRenderer(800, 240, 4.0 * examples,
-				examples);
-			contents.add(error_plot);
+			var err_grid = new Grid();
+			var max_error = 4.0 * examples;
+			// create all the plot labels
+			err_grid.attach(new Label("%.1f".printf(max_error)), 0, 0, 1, 1);
+			var label = new Label("Sum-squared error");
+			label.expand = true;
+			label.angle = 90;
+			err_grid.attach(label, 0, 1, 1, 1);
+			err_grid.attach(new Label("%.1f".printf(0.0)), 0, 2, 1, 1);
+			err_grid.attach(new Label("0"), 1, 3, 1, 1);
+			label = new Label("Epoch (cycle)");
+			label.expand = true;
+			err_grid.attach(label, 2, 3, 1, 1);
+			err_grid.attach(new Label("%d".printf(examples)), 3, 3, 1, 1);
+			// create the actual plot
+			var error_plot = new ErrorPlotRenderer(800, 240, max_error, examples);
+			err_grid.attach(error_plot, 1, 0, 3, 3);
+			contents.add(err_grid);
 
 			var progbar = new ProgressBar();
 			progbar.width_request = 320;
