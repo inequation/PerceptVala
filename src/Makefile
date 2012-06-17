@@ -14,6 +14,13 @@ MKDIR_P = mkdir -p
 VALAC = valac
 # valac flags
 VALACFLAGS = --pkg gtk+-3.0 --pkg cairo --pkg pango --pkg gee-1.0
+# path to the MinGW gcc cross-compiler (only relevant if cross-compiling from
+# Linux to Win32)
+MINGW_GCC = i686-w64-mingw32-gcc
+# MinGW gcc flags (only relevant if cross-compiling from Linux to Win32)
+MINGW_CFLAGS = -O3
+# MinGW pkg-config call routine syntax
+MINGW_PKG_CONFIG = PKG_CONFIG_PATH=/home/inequation/mingw/lib/pkgconfig/ pkg-config --define-variable=prefix=/home/inequation/mingw
 # debug dist directory
 DEBUG_DIST_DIR = ../bin/Debug
 # release dist directory
@@ -27,6 +34,13 @@ EXEC_EXT =
 # =============================================================================
 
 SOURCES=Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
+C_SOURCES=Main.c MainWindow.c Image.c ImagePixel.c Neuron.c NeuralNetwork.c CharacterRenderer.c BiasNeuron.c ErrorPlotRenderer.c
+
+MINGW_FLAGS_GLIB=`$(MINGW_PKG_CONFIG) glib-2.0 --cflags --libs`
+MINGW_FLAGS_GTK=`$(MINGW_PKG_CONFIG) gtk+-3.0 --cflags --libs`
+MINGW_FLAGS_GDK=`$(MINGW_PKG_CONFIG) gdk-win32-2.0 --cflags --libs`
+MINGW_FLAGS_GDK=`$(MINGW_PKG_CONFIG) atk --cflags --libs`
+MINGW_CFLAGS_ACTUAL=$(MINGW_CFLAGS) $(MINGW_FLAGS_GLIB) $(MINGW_FLAGS_GTK) $(MINGW_FLAGS_GDK)
 
 all: release
 
@@ -37,6 +51,10 @@ cleanrelease: clean
 clean:
 	echo Cleaning...
 	rm -f perceptvala *.vala.c
+
+cross-win32: $(SOURCES)
+	$(MAKE) perceptvala VALACFLAGS="$(VALACFLAGS) --disable-assert -C"
+	$(MINGW_GCC) $(MINGW_CFLAGS_ACTUAL) $(C_SOURCES) -o perceptvala.exe
 
 # recursively call make with proper flags
 release: $(SOURCES)
