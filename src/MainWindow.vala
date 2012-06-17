@@ -24,8 +24,8 @@ public class MainWindow : Window {
 	private TreeIter m_output_layer;
 	private SpinButton m_glyph_size;
 	private SpinButton m_layer_size;
-	private ComboBoxText m_start_output;
-	private ComboBoxText m_end_output;
+	private ComboBox m_start_output;
+	private ComboBox m_end_output;
 
 	// training widgets
 	private FontButton m_train_font_button;
@@ -122,7 +122,7 @@ public class MainWindow : Window {
 	}
 
 	private Widget create_net_setup_page() {
-		var grid = new Grid();
+		var grid = new Table(2, 2, false);
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
@@ -142,11 +142,11 @@ public class MainWindow : Window {
 		grid.attach(m_glyph_size, 1, 0, 1, 1);
 
 		grid.attach(new Label("First output character"), 0, 1, 1, 1);
-		m_start_output = new ComboBoxText();
+		m_start_output = new ComboBox.text();
 		grid.attach(m_start_output, 1, 1, 1, 1);
 
 		grid.attach(new Label("Last output character"), 0, 2, 1, 1);
-		m_end_output = new ComboBoxText();
+		m_end_output = new ComboBox.text();
 		grid.attach(m_end_output, 1, 2, 1, 1);
 
 		for (int i = 32; i < 256; ++i) {
@@ -245,7 +245,7 @@ public class MainWindow : Window {
 				+ 1),
 			ViewColumn.IS_TANH, false);
 
-		var subgrid = new Grid();
+		var subgrid = new Table();
 		subgrid.column_spacing = 5;
 		subgrid.row_spacing = 5;
 		subgrid.column_homogeneous = true;
@@ -435,7 +435,7 @@ public class MainWindow : Window {
 	private Widget create_training_page() {
 		int row = 0;
 
-		var grid = new Grid();
+		var grid = new Table(2, 2, false);
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
@@ -531,7 +531,7 @@ public class MainWindow : Window {
 
 		grid.attach(m_train_charsel, 0, ++row, 1, 1);
 
-		var subgrid = new Grid();
+		var subgrid = new Table();
 		subgrid.column_spacing = 5;
 		subgrid.row_spacing = 5;
 		subgrid.column_homogeneous = true;
@@ -707,7 +707,7 @@ public class MainWindow : Window {
 		grid.attach(subgrid, 0, ++row, 2, 1);
 
 		m_training_renderer = new CharacterRenderer(
-			(FontChooser)m_train_font_button,
+			m_train_font_button,
 			() => {return (unichar)(m_train_charsel.adjustment.value);},
 			(int)m_glyph_size.adjustment.value);
 		fixed.put(m_training_renderer, 0, 0);
@@ -726,7 +726,7 @@ public class MainWindow : Window {
 	private Widget create_testing_page() {
 		int row = 0;
 
-		var grid = new Grid();
+		var grid = new Table();
 
 		grid.column_spacing = 5;
 		grid.row_spacing = 5;
@@ -793,7 +793,7 @@ public class MainWindow : Window {
 		m_test_result = new Label(" ");
 		grid.attach(m_test_result, 1, row, 1, 1);
 
-		var subgrid = new Grid();
+		var subgrid = new Table();
 		subgrid.column_spacing = 5;
 		subgrid.row_spacing = 5;
 		subgrid.column_homogeneous = true;
@@ -849,7 +849,7 @@ public class MainWindow : Window {
 			progbar.show_text = true;
 			contents.add(progbar);
 
-			var tgrid = new Grid();
+			var tgrid = new Table();
 			tgrid.column_spacing = 5;
 			tgrid.row_spacing = 5;
 			tgrid.column_homogeneous = false;
@@ -945,7 +945,7 @@ public class MainWindow : Window {
 		grid.attach(subgrid, 0, ++row, 2, 1);
 
 		m_testing_renderer = new CharacterRenderer(
-			(FontChooser)m_test_font_button,
+			m_test_font_button,
 			() => {return (unichar)(m_test_charsel.adjustment.value);},
 			(int)m_glyph_size.adjustment.value);
 		fixed.put(m_testing_renderer, 0, 0);

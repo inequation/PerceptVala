@@ -13,7 +13,7 @@ MKDIR_P = mkdir -p
 # path to the Vala compiler
 VALAC = valac
 # valac flags
-VALACFLAGS = --pkg gtk+-3.0 --pkg cairo --pkg pango --pkg gee-1.0
+VALACFLAGS = --pkg gtk+-2.0 --pkg cairo --pkg pango --pkg gee-1.0
 # path to the MinGW gcc cross-compiler (only relevant if cross-compiling from
 # Linux to Win32)
 MINGW_GCC = i686-w64-mingw32-gcc

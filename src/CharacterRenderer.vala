@@ -4,13 +4,14 @@ Written by Leszek Godlewski <github@inequation.org>
 */
 
 using Gtk;
+using Gdk;
 using Pango;
 using Cairo;
 
 public class CharacterRenderer : Gtk.Misc {
 	public delegate unichar CharacterDelegate();
 
-	private FontChooser m_font_chooser;
+	private FontButton m_font_chooser;
 	private int m_dim;
 	private CharacterDelegate m_char;
 	private int m_x_jitter;
@@ -64,19 +65,22 @@ public class CharacterRenderer : Gtk.Misc {
 		}
 	}
 
-	public CharacterRenderer(FontChooser fch, CharacterDelegate d, int dim) {
+	public CharacterRenderer(FontButton fch, CharacterDelegate d, int dim) {
 		m_font_chooser = fch;
 		m_char = d;
 		dimension = dim;
 		m_x_jitter = 0;
 		m_y_jitter = 0;
 		m_noise = 0;
+		expose_event.connect(draw);
 	}
 
 	public void render() {
 		m_ctx.save();
 
-		m_playout.set_font_description(m_font_chooser.get_font_desc());
+		//m_playout.set_font_description(m_font_chooser.get_font_desc());
+		m_playout.set_font_description(new FontDescription.from_string(
+			m_font_chooser.font_name));
 		m_playout.set_markup(m_char().to_string(), -1);
 
 		m_ctx.set_source_rgb(1, 1, 1);
@@ -126,8 +130,9 @@ public class CharacterRenderer : Gtk.Misc {
 		m_surf.flush();
 	}
 
-	public override bool draw (Cairo.Context ctx)
+	public bool draw(EventExpose event)
 	{
+		var ctx = new Cairo.Context(event.window.ref_cairo_surface());
 		render();
 		ctx.set_source_surface(m_surf, 0, 0);
 		ctx.paint();
