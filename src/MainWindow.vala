@@ -6,6 +6,9 @@ Written by Leszek Godlewski <github@inequation.org>
 using Gtk;
 using Gee;
 
+/**
+ * Main program GTK window class.
+ */
 public class MainWindow : Window {
 	private Notebook m_notebook;
 
@@ -58,8 +61,14 @@ public class MainWindow : Window {
 	// testing dialog
 	private bool m_break_testing;
 
+	/**
+	 * Reference to the actual current network. May be null.
+	 */
 	public NeuralNetwork? m_network;
 
+	/**
+	 * Helper enumeration of layer view columns.
+	 */
 	private enum ViewColumn {
 		TYPE,
 		SIZE,

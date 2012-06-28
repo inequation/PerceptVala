@@ -3,26 +3,63 @@ PerceptVala neuron class
 Written by Leszek Godlewski <github@inequation.org>
 */
 
+/**
+ * Error domain for exceptions in activation calculation in neurons.
+ */
 public errordomain ActivationError {
+	/**
+	 * Activation has assumed the NaN or infinity value.
+	 */
 	IS_NAN_OR_INF
 }
 
+/**
+ * Class representing a single neuron.
+ */
 public class Neuron {
 #if DEBUG
 	private static const double ACTIVATION_DANGER_THRESHOLD = 2.0;
 #endif
 
-	/** Neuron connection. */
+	/**
+	 * A connection between two neurons.
+	 */
 	public class Synapse {
+		/**
+		 * Reference to the posterior neuron, i.e. the receiving end.
+		 */
 		public Neuron? post;
+		/**
+		 * Reference to the posterior neuron, i.e. the transmitting end.
+		 */
 		public Neuron? ant;
+		/**
+		 * Weight that this synapse has for the posterior neuron.
+		 */
 		public double weight;
+		/**
+		 * Value of the last weight update. Used for learning momentum and
+		 * rolling back weight updates that increase overall network error in
+		 * the Bold Driver algorithm.
+		 */
 		public double last_weight_update;
+
+		/**
+		 * Basic constructor. Weight will be initialized to 0.0.
+		 * @param posterior reference to the posterior (receiving) neuron
+		 * @param anterior  reference to the anterior (transmitting) neuron
+		 */
 		public Synapse(Neuron? posterior, Neuron? anterior) {
 			post = posterior;
 			ant = anterior;
 			last_weight_update = weight = 0.0;
 		}
+		/**
+		 * Constructs the synapse with a pre-defined weight.
+		 * @param posterior reference to the posterior (receiving) neuron
+		 * @param anterior  reference to the anterior (transmitting) neuron
+		 * @param _weight   weight to initialize the synapse with
+		 */
 		public Synapse.with_weight(Neuron? posterior, Neuron? anterior,
 			double _weight) {
 			this(posterior, anterior);
@@ -30,18 +67,31 @@ public class Neuron {
 		}
 	}
 
+	/**
+	 * Basic neuron constructor.
+	 * @param is_tanh   if true, this neuron will process its activation with the tanh() function
+	 */
 	public Neuron(bool is_tanh) {
 		m_is_tanh = is_tanh;
 		error = 0.0;
 	}
 
+	/**
+	 * Adds a new synapse to one of the arrays, depending on this neuron's role
+	 * in it (anterior or posterior).
+	 */
 	public void add_synapse(Synapse s) {
+		assert(s.ant == this || s.post == this);
 		if (s.ant == this)
 			m_posterior += s;
 		else
 			m_anterior += s;
 	}
 
+	/**
+	 * Queries the activation signal output.
+	 * @return the activation signal output for this neuron
+	 */
 	public virtual double get_signal() throws ActivationError {
 		double activation = 0.0;
 #if DEBUG && VERBOSE
@@ -73,6 +123,10 @@ public class Neuron {
 		return activation;
 	}
 
+	/**
+	 * Queries the derivative of the activation signal output.
+	 * @return derivative of the activation signal output for this neuron
+	 */
 	public double get_signal_derivative() throws ActivationError {
 		if (m_is_tanh) {
 			// tanh(x)' = 1 - tanh^2(x)
@@ -108,6 +162,10 @@ public class Neuron {
 		return activation;
 	}
 
+	/**
+	 * Queries the error signal output.
+	 * @return the error signal output for this neuron
+	 */
 	public double get_signal_error() throws ActivationError {
 		double activation = 0.0;
 #if DEBUG && VERBOSE
@@ -139,6 +197,10 @@ public class Neuron {
 		return activation;
 	}
 
+	/**
+	 * Queries the approximate variance of the error signal output.
+	 * @return approximate variance of the error signal output for this neuron
+	 */
 	public double get_error_variance() {
 		double v;
 		// output nodes have it simpler
@@ -152,6 +214,12 @@ public class Neuron {
 		return v / (double)m_anterior.length;
 	}
 
+	/**
+	 * Updates all incoming synapse weights with the local learning rate,
+	 * derived from the global one.
+	 * @param rate      global learning rate
+	 * @param momentum  momentum influence term
+	 */
 	public void update_weights(double rate, double momentum) throws ActivationError {
 		var local_rate = rate / (m_anterior.length
 			* Math.sqrt(get_error_variance()));
@@ -164,12 +232,23 @@ public class Neuron {
 		}
 	}
 
+	/**
+	 * Initializes all synapse weights to random values.
+	 *
+	 * The range of values is proportional to the square root of the number of
+	 * anterior neurons.
+	 */
 	public void randomize_weights() {
 		double r = 1.0 / Math.sqrt((double)m_anterior.length);
 		foreach (Synapse s in m_anterior)
 			s.weight = Random.double_range(-r, r);
 	}
 
+	/**
+	 * Undoes the last weight update.
+	 *
+	 * A side effect is that the last weight update value is lost.
+	 */
 	public void rollback_last_update() {
 		foreach (Synapse s in m_anterior) {
 			s.weight -= s.last_weight_update;
@@ -179,14 +258,40 @@ public class Neuron {
 		}
 	}
 
+	/**
+	 * Array of the posterior (receiving end) synapses.
+	 */
 	public Synapse[] posterior_synapses { get { return m_posterior; } }
+	/**
+	 * Array of the anterior (transmitting end) synapses.
+	 */
 	public Synapse[] anterior_synapses { get { return m_anterior; } }
+	/**
+	 * If true, this neuron processes its activation with the tanh() function.
+	 */
 	public bool is_tanh { get { return m_is_tanh; } }
 
+	/**
+	 * Queries whether this neuron is a bias neuron.
+	 * @return if true, this neuron is the bias neuron
+	 */
 	public virtual bool is_bias_neuron() { return false; }
 
+	/**
+	 * Current signal error value.
+	 */
 	public double error;
+	/**
+	 * Array of the posterior (receiving end) synapses.
+	 */
 	private Synapse[] m_posterior;
+	/**
+	 * Array of the anterior (transmitting end) synapses.
+	 */
 	private Synapse[] m_anterior;
+	/**
+	 * The flag controlling whether this neuron processes the input with the
+	 * tanh() function.
+	 */
 	private bool m_is_tanh;
 }

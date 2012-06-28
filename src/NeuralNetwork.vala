@@ -5,6 +5,9 @@ Written by Leszek Godlewski <github@inequation.org>
 
 using Gee;
 
+/**
+ * Container class for the entire network structure.
+ */
 public class NeuralNetwork {
 	private ArrayList<Neuron> m_outputs;
 	private ArrayList<ArrayList<Neuron>> m_layers;
@@ -14,8 +17,8 @@ public class NeuralNetwork {
 
 	/**
 	 * Initializes a neural network with the given count of outputs.
-	 * @param	outputs		number of characters the network will distinguish between
-	 * @param	first_char	code of first character
+	 * @param outputs number    of characters the network will distinguish between
+	 * @param first_char        code of first character
 	 */
 	public NeuralNetwork(uint outputs, uint8 first_char) {
 		this.no_init(first_char);
@@ -31,7 +34,7 @@ public class NeuralNetwork {
 	/**
 	 * A constructor that doesn't actually create the output layer. For
 	 * internal use.
-	 * @param	first_char	code of first character
+	 * @param first_char    code of first character
 	 */
 	private NeuralNetwork.no_init(uint8 first_char) {
 		m_outputs = new ArrayList<Neuron>();
@@ -78,10 +81,10 @@ public class NeuralNetwork {
 
 	/**
 	 * Trains the neural network with the given example.
-	 * @param rate		learning rate
-	 * @param momentum	momentum term
-	 * @param target	array of target weights to descend to
-	 * @return	the sum-squared error after the current training cycle
+	 * @param rate      learning rate
+	 * @param momentum  momentum term
+	 * @param target    array of target weights to descend to
+	 * @return the sum-squared error after the current training cycle
 	 */
 	public double train(double rate, double momentum, ArrayList<double?> target)
 		throws ActivationError {
@@ -145,6 +148,9 @@ public class NeuralNetwork {
 		return sse;
 	}
 
+	/**
+	 * Undoes the last weight update (training result), network-wide.
+	 */
 	public void rollback_last_update() {
 		for (int i = m_layers.size - 1; i > 0; --i) {
 			foreach (Neuron n in m_layers[i])
@@ -152,6 +158,10 @@ public class NeuralNetwork {
 		}
 	}
 
+	/**
+	 * Serializes the entire network structure to a binary file.
+	 * @param in_fname  path to the file that the network will be serialized to
+	 */
 	public void serialize(string in_fname) {
 		assert(sizeof(double) == sizeof(uint64));
 		string fname;
@@ -201,6 +211,10 @@ public class NeuralNetwork {
 		}
 	}
 
+	/**
+	 * Deserializes a network structure from the given binary file.
+	 * @param fname path to the file that the network will be deserialized from
+	 */
 	public static NeuralNetwork? deserialize(string fname) {
 		NeuralNetwork? net = null;
 		assert(sizeof(double) == sizeof(uint64));
@@ -282,6 +296,10 @@ public class NeuralNetwork {
 		return net;
 	}
 
+	/**
+	 * Writes out a human-readable representation of the network to a text file.
+	 * @param in_fname  path to the file to dump the network to
+	 */
 	public void dump_to_text_file(string in_fname) {
 		string fname;
 		if (!in_fname.down().has_suffix(".txt"))
@@ -321,16 +339,25 @@ public class NeuralNetwork {
 		}
 	}
 
+	/**
+	 * Collection of all the neuron layers in the network.
+	 */
 	public ArrayList<ArrayList<Neuron>> layers {
 		get {
 			return m_layers;
 		}
 	}
 
+	/**
+	 * Collection of all the neurons in the output layer.
+	 */
 	public ArrayList<Neuron> outputs {
 		get { return m_outputs; }
 	}
 
+	/**
+	 * Collection of all the image pixel perceptors in the intput layer.
+	 */
 	public ArrayList<ImagePixel>? inputs {
 		get {
 			ArrayList<Neuron> l = m_layers[0];
@@ -338,12 +365,19 @@ public class NeuralNetwork {
 		}
 	}
 
+	/**
+	 * First character of the network's sequence.
+	 */
 	public uint8 first_char {
 		get {
 			return m_first_char;
 		}
 	}
 
+	/**
+	 * Network age, i.e. number of epochs that the network has been learning
+	 * for.
+	 */
 	public uint age {
 		get {
 			return m_age;

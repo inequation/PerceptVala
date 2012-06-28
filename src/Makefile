@@ -12,8 +12,14 @@ MAKE = make
 MKDIR_P = mkdir -p
 # path to the Vala compiler
 VALAC = valac
+# path to the valadoc documentation generator
+VALADOC = valadoc
+# valac/valadoc flags that define the packages to use
+VALAPKGFLAGS = --pkg gtk+-3.0 --pkg cairo --pkg pango --pkg gee-1.0
 # valac flags
-VALACFLAGS = --pkg gtk+-3.0 --pkg cairo --pkg pango --pkg gee-1.0
+VALACFLAGS = $(VALAPKGFLAGS)
+# valadoc flags
+VALADOCFLAGS = $(VALAPKGFLAGS) --vapidir=/usr/share/vala-0.18/vapi/ --private --package-name=PerceptVala --package-version="`LC_ALL=en_US date`"
 # path to the MinGW gcc cross-compiler (only relevant if cross-compiling from
 # Linux to Win32)
 MINGW_GCC = i686-w64-mingw32-gcc
@@ -33,8 +39,8 @@ EXEC_EXT =
 # End of configuration
 # =============================================================================
 
-SOURCES=Main.vala MainWindow.vala Image.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
-C_SOURCES=Main.c MainWindow.c Image.c ImagePixel.c Neuron.c NeuralNetwork.c CharacterRenderer.c BiasNeuron.c ErrorPlotRenderer.c
+SOURCES=Main.vala MainWindow.vala ImagePixel.vala Neuron.vala NeuralNetwork.vala CharacterRenderer.vala BiasNeuron.vala ErrorPlotRenderer.vala
+C_SOURCES=Main.c MainWindow.c ImagePixel.c Neuron.c NeuralNetwork.c CharacterRenderer.c BiasNeuron.c ErrorPlotRenderer.c
 
 MINGW_FLAGS_GLIB=`$(MINGW_PKG_CONFIG) glib-2.0 --cflags --libs`
 MINGW_FLAGS_GTK=`$(MINGW_PKG_CONFIG) gtk+-3.0 --cflags --libs`
@@ -78,3 +84,7 @@ debug-verbose: $(SOURCES)
 
 perceptvala: $(SOURCES)
 	$(VALAC) $(VALACFLAGS) -o perceptvala$(EXEC_EXT) $(SOURCES)
+
+docs: $(SOURCES)
+	rm -rf ../doc
+	$(VALADOC) $(VALADOCFLAGS) -o ../doc $(SOURCES)

@@ -7,7 +7,17 @@ using Gtk;
 using Pango;
 using Cairo;
 
+/**
+ * Cairo-backed font character renderer widget.
+ *
+ * The pixel buffer is read by the network input neurons.
+ */
 public class CharacterRenderer : Gtk.Misc {
+	/**
+	 * Signature of the delegate which is used to fetch the code of the
+	 * character we're supposed to render.
+	 * @return unicode of the character to render
+	 */
 	public delegate unichar CharacterDelegate();
 
 	private FontChooser m_font_chooser;
@@ -17,10 +27,24 @@ public class CharacterRenderer : Gtk.Misc {
 	private int m_y_jitter;
 	private int m_noise;
 
+	/**
+	 * The internal Cairo surface which will be drawn on.
+	 */
 	private ImageSurface m_surf;
+	/**
+	 * The Cairo context used to draw on the internal surface.
+	 */
 	private Cairo.Context m_ctx;
+	/**
+	 * Pango font layout used to draw the character.
+	 */
 	private Pango.Layout m_playout;
 
+	/**
+	 * Dimension of the bitmap.
+	 *
+	 * Length of a side of the square.
+	 */
 	public int dimension {
 		get { return m_dim; }
 		set {
@@ -34,6 +58,9 @@ public class CharacterRenderer : Gtk.Misc {
 		}
 	}
 
+	/**
+	 * Extreme value of character position jitter on the X axis.
+	 */
 	public int x_jitter {
 		get { return m_x_jitter; }
 		set {
@@ -44,6 +71,9 @@ public class CharacterRenderer : Gtk.Misc {
 		}
 	}
 
+	/**
+	 * Extreme value of character position jitter on the Y axis.
+	 */
 	public int y_jitter {
 		get { return m_y_jitter; }
 		set {
@@ -54,6 +84,9 @@ public class CharacterRenderer : Gtk.Misc {
 		}
 	}
 
+	/**
+	 * Noise amount.
+	 */
 	public int noise {
 		get { return m_noise; }
 		set {
@@ -64,6 +97,12 @@ public class CharacterRenderer : Gtk.Misc {
 		}
 	}
 
+	/**
+	 * Base constructor.
+	 * @param fch   reference to the font chooser Gtk interface
+	 * @param d     delegate for fetching new character codes
+	 * @param dim   render target bitmap dimension (square side length)
+	 */
 	public CharacterRenderer(FontChooser fch, CharacterDelegate d, int dim) {
 		m_font_chooser = fch;
 		m_char = d;
@@ -73,6 +112,9 @@ public class CharacterRenderer : Gtk.Misc {
 		m_noise = 0;
 	}
 
+	/**
+	 * Renders the character with current jitter and noise settings.
+	 */
 	public void render() {
 		m_ctx.save();
 
@@ -126,6 +168,10 @@ public class CharacterRenderer : Gtk.Misc {
 		m_surf.flush();
 	}
 
+	/**
+	 * GTK widget drawing handler.
+	 * @param ctx   Cairo context for the widget's surface
+	 */
 	public override bool draw (Cairo.Context ctx)
 	{
 		render();
@@ -134,6 +180,11 @@ public class CharacterRenderer : Gtk.Misc {
 		return false;
 	}
 
+	/**
+	 * Retrieves the 3-byte RGB tuple that constitutes a pixel.
+	 * @param x the X coordinate
+	 * @param y the Y coordinate
+	 */
 	public uint8[] get_pixel(uint x, uint y) {
 		uint offset = (y * m_dim + x) * 3;
 		return m_surf.get_data()[offset:offset + 3];
