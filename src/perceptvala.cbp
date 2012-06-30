@@ -61,6 +61,7 @@
 			<Option target="debug" />
 			<Option target="release" />
 		</Unit>
+		<Unit filename="doc/index.vala" />
 		<Extensions>
 			<code_completion />
 			<envvars />

@@ -19,7 +19,7 @@ VALAPKGFLAGS = --pkg gtk+-3.0 --pkg cairo --pkg pango --pkg gee-1.0
 # valac flags
 VALACFLAGS = $(VALAPKGFLAGS)
 # valadoc flags
-VALADOCFLAGS = $(VALAPKGFLAGS) --vapidir=/usr/share/vala-0.18/vapi/ --private --package-name=PerceptVala --package-version="`LC_ALL=en_US date`"
+VALADOCFLAGS = $(VALAPKGFLAGS) --vapidir=/usr/share/vala-0.18/vapi/ --private --package-name=PerceptVala --package-version="`LC_ALL=en_US date`" --wiki=.
 # path to the MinGW gcc cross-compiler (only relevant if cross-compiling from
 # Linux to Win32)
 MINGW_GCC = i686-w64-mingw32-gcc
