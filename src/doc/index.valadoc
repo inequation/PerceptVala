@@ -5,7 +5,7 @@ An experimentation environment in ''optical character recognition'' using
 
 =Project in Biologically Motivated Artificial Intelligence Methods=
 
-Gliwice, June 30th, 2012
+Gliwice, September 16th, 2012
 
 ''Author:'' Leszek Godlewski, Computer science, sem. VI, gr. GKiO1<<BR>>
 ''Teacher:'' Grzegorz Baron, PhD<<BR>>
@@ -14,4 +14,9 @@ Silesian University of Technology
 
 ==Table of contents==
 
-1. [[introduction.htm|Introduction]]
+1. [[intro.valadoc|Introduction]]<<BR>>
+2. [[arch.valadoc|Architecture]]<<BR>>
+3. [[extern_spec.valadoc|External specification]]<<BR>>
+4. [[intern_spec.valadoc|Internal specification]]<<BR>>
+5. [[experiments.valadoc|Experimentation]]<<BR>>
+6. [[conclusions.valadoc|Conclusions]]

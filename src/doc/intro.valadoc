@@ -1,0 +1,7 @@
+= Introduction =
+
+As my project in Biologically-Motivated Methods of Artificial Intelligence, I've decided to explore the subject of Artificial Neural Networks. A classical problem to tackle with ANN is optical character recognition, and that is what I chose to do: an experimentation environment for OCR. I've also used this as an opportunity to learn a new programming language - [[http://live.gnome.org/Vala|Vala]] - and its ecosystem.
+
+Throughout my work I used N. Schraudolph and F. Cummins' [[http://www.idsia.ch/NNcourse/|Introduction to Neural Networks]] course for reference.
+
+[[index.valadoc|Index]] · Next: [[arch.valadoc|Architecture]]

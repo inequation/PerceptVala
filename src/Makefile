@@ -87,4 +87,4 @@ perceptvala: $(SOURCES)
 
 docs: $(SOURCES)
 	rm -rf ../doc
-	$(VALADOC) $(VALADOCFLAGS) -o ../doc $(SOURCES)
+	$(VALADOC) $(VALADOCFLAGS) -o ../doc $(SOURCES) --wiki ./doc

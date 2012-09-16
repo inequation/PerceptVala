@@ -1,0 +1,33 @@
+= External specification =
+
+== Network setup ==
+
+Upon launching the program, the main window will appear with the Network setup tab activated.
+
+{{setup.png}}
+
+Once satisfied with the settings, the user may click Apply to construct the network with the characteristics specified (it will also cause a switch to the Training tab). The default settings are good for a decimal digit recognition experiment. Network serialization/deserialization is also available using the Open and Save as buttons.
+
+== Training ==
+
+Setting up a network takes the user to this tab, where the network may be trained.
+
+{{training.png}}
+
+Please note the rate adaptation settings - the option to enable the Bold Driver algorithm, and to set the Annealing period.
+
+When starting the network training, the user will be presented with a network training progress screen like this one:
+
+{{training_progress.png}}
+
+== Testing ==
+
+This tab may be accessed as soon as a network is constructed; however, you can't expect any proper results until it's trained.
+
+{{testing.png}}
+
+A full network test sequence will present the user with a network testing progress screen:
+
+{{testing_progress.png}}
+
+[[index.valadoc|Index]] · Previous: [[arch.valadoc|Architecture]] · Next: [[intern_spec.valadoc|Internal specification]]

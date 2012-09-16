@@ -44,7 +44,6 @@
 			<Option target="debug" />
 			<Option target="release" />
 		</Unit>
-		<Unit filename="Introduction.valadoc" />
 		<Unit filename="Main.vala">
 			<Option target="debug" />
 			<Option target="release" />
@@ -62,7 +61,6 @@
 			<Option target="debug" />
 			<Option target="release" />
 		</Unit>
-		<Unit filename="index.valadoc" />
 		<Extensions>
 			<code_completion />
 			<envvars />
