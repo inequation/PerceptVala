@@ -1,5 +1,74 @@
 = Experimentation =
 
+During the development of the project I decided to stick to a very simple experiment - the recognition of the 10 decimal digits using a 2-layer (input and output) linear network - and only move on to larger ones once this experiment is covered.
 
+== Initial experiments ==
+
+My first implementation of the backpropagation algorithm was basically non-functional. I was initially normalizing the signals to the [0..1] range, as opposed to the [-1..1] introduced later on, and synapse weights were originally initialized to random values also within the [0..1] range. This proved extremely problematic - considering the fact that there are 64 input neurons, it was relatively easy for the output neurons to achieve extremely high signal values. This caused the overall network output sum-squared error (SSE) to ''always'' diverge during backpropagation on two-layer networks. In multi-layer network tests, the program would promptly throw an arithmetic exception, as the signal values would rapidly approach inifinity; at that point, almost any operation on those numbers would yield a NaN value.
+
+The reasons for this were three-fold.
+
+ 1. ''Lack of proper normalization'' - as I noted above, due to the fact that all input signals were positive numbers, signal value had been accumulating very quickly and achieved extreme magnitudes which made classification basically impossible, especially in multi-layer network tests. Changing the normalization range to [-1..1] greatly improved the output signal range, reducing the magnitudes to values closer to the initial range and enabling taking advantage of the number sign in the classification process.
+ 1. ''Bad distribution of initial synapse weights'' - this contributed greatly to the issues encountered above (i.e. signal magnitude accumulation). Switching to a solution described in the [[http://www.idsia.ch/NNcourse/precond.html|Preconditioning the Network]] section of the Introduction to Neural Networks course further improved the output signal range, the convergence of SSE during error backpropagation, as well as overall stability (cases of arithmetic exceptions have been almost entirely eliminated by this change).
+ 1. ''Inadequate scaling of error during backpropagation'' - using the same, one global learning rate for the entire network caused some of the neurons' error to converge, while the others diverge, hindering the overall learning performance of the network. I've integrated the concept of local learning rates (also proposed in the course section linked above) to great success - once that code was in place, the network was finally capable of learning something consistently, independent from the initial combination of synapse weights.
+
+== Momentum ==
+
+Once I've overcome the above issues and the network finally displayed the ability to learn, I set out to the following experiment:
+
+ * 8x8 pixel glyphs
+ * 10 decimal digits
+ * no noise
+ * no jitter
+ * constant font size and face
+ * global learning rate of 0.28 (I've established empirically that any value larger than that will cause divergence)
+
+I first wanted to see how the order of examples influences the learning speed. On the plot below, green represents the SSE plot of the sequentially-ordered example attempt, red - the randomized one:
+
+{{bare.png}}
+
+Note how the randomization causes the plot to become jagged, while the sequential plot is smooth. It takes 90 epochs for the randomized attempt to reach perfect recognition rate, while the sequential can take as much as 3 times as many epochs to reach te same performance rate - clearly, example order randomization significantly improves learning speed.
+
+I then tried applying the momentum term. It turned out to be a very tricky variable - setting it to too high a value can cause the network to diverge, but if its influence is low, it can give a speedup - here's a plot with the same settings as above, only with a momentum term of 0.05:
+
+{{momentum1.png}}
+
+The momentum term allows the network to reach classification ability after 75 epochs.
+
+However, if we swap the proportions of the global learning rate and the momemntum term - 0.05 and 0.9, respectively - an extreme speedup may be achieved:
+
+{{momentum2.png}}
+
+As you can see, I have managed to achieve a reduction of time required to train a neural network to classify bitmaps of digits from ''90'' to ''only 40 epochs''.
+
+== Learning rate adaptation ==
+
+In the [[http://www.idsia.ch/NNcourse/momrate.html|Momentum and Learning Rate Adaptation]] section of the course, two methods of learning rate adaptation are described. I've implemented Bold Driver first. It doesn't appear to be very effective, though:
+
+{{bolddriver.png}}
+
+Please take a look at the above plots. Apparently, the error function has several local minima, and the bold driver algorithm appears to easily get stuck on one of them before reaching the global minimum.
+
+The technique of annealing (T=30 epochs) produces a somewhat similar result:
+
+{{annealing.png}}
+
+It seems that optical character recognition is not a problem to which the above techniques can be successfully applied.
+
+== Influence of noise ==
+
+I have started exploring the influence of noise on the network's effectiveness by applying a 5% per-pixel uniform noise. Its effect is already clearly visible in the learning curve:
+
+{{noise5.png}}
+
+Further training neither improves nor worsens the network's performance. At this point, testing the network against samples with 3% per-pixel noise gives an average of ''36% of correctly recognized characters'', with results varying from 3 to 5 recognized characters. The digits which are easiest to recognize are 0, 1 and 4; 5 is also often recognized, and 6 as well, but more rarely.
+
+Reducing the testing noise to 0% improves the network's performance to a consistent 50%, with the digits 0, 1, 4, 5 and 6 always recognized.
+
+Then I went on to evaluate how jitter affects character recognition. I started out with 8% of the glyph size (which corresponds roughly to a maximum jitter of 1 pixel in every direction). This is what the learning curve looks like:
+
+{{jitter8.png}}
+
+Unfortunately, this kind of transformation reduces the network's capability to an absolute zero. Not a single character can be recognized, regardless of whether jitter is enabled during testing or not.
 
 [[index.valadoc|Index]] · Previous: [[intern_spec.valadoc|Internal specification]] · Next: [[conclusions.valadoc|Conclusions]]

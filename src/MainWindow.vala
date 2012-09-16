@@ -709,7 +709,7 @@ public class MainWindow : Window {
 						// otherwise cut the rate sharply and roll back the last
 						// weight update; don't let it get too small, though
 						m_network.rollback_last_update();
-						rate = Math.fmax(rate * 0.5, m_rate.value * 0.01);
+						rate = Math.fmax(rate * 0.5, m_rate.value * 0.000001);
 						stdout.printf("cutting rate: %f\n", rate);
 					}
 				}

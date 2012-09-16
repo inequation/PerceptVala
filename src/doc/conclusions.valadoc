@@ -1,1 +1,13 @@
+= Conclusions =
+
+During the course of the project I have developed a program which, although limited, is a useful learning aid in exploring the capabilities of Artificial Neural Networks. The ability to plot helps visualize the impact some of the simple techniques have on a network's performance. Neural networks are a fascinating tool, and their ability to adjust and adapt is astounding. Unfortunately, I haven't had time to test out multi-layer network, but I'm quite sure they could provide some very interesting results, too.
+
+I find it amazing how such simple modifications as the normalization of inputs and targets, localizing the learning rate and using momentum can improve a network's learning time. The experiments I've carried out make these improvements abundantly visible. On the other hand, some techniques, like the Bold Driver and annealing, are not very effective in this kind of a problem.
+
+It is also apparent from the experiments with noise that relying on per-pixel bitmap observation can only be effective for clean, non-transformed glyphs. It doesn't surprise me, though - it's only logical that a higher-level structure should first "clean" and transform the input data into a form which could be interpreted. I think this problem could be solved by another neuron layer, though - as I said - I didn't have time to test it out before the end of the semester.
+
+As for further development directions - multi-layer networks could be tested thoroughly and any bugs related to them fixed. There are also many places where optimizations could be placed. For instance, currently every neuron in every layer below the output layer calculates its output function more than once, and the number of get_signal() calls increases exponentially on every layer. This could be changed by caching the result of the [[Neuron.get_signal.html|Neuron.get_signal*()]] function family.
+
+I am releasing the source code of the program as open source under the simplified BSD license on [[http://github.com/inequation/PerceptVala|github]] for everyone to use - perhaps others will find it useful to learn.
+
 [[index.valadoc|Index]] · Previous: [[experiments.valadoc|Experimentation]]
