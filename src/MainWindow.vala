@@ -160,7 +160,10 @@ public class MainWindow : Window {
 
 		for (int i = 32; i < 256; ++i) {
 			string id = "%d".printf(i);
-			string text = "%d: '%c'".printf(i, (char)i);
+			unichar u = i;
+			string c = "      ";
+			u.to_utf8(c);
+			string text = "%d: '%01s'".printf(i, c.chomp());
 			m_start_output.append(id, text);
 			m_end_output.append(id, text);
 		}
@@ -1071,8 +1074,11 @@ public class MainWindow : Window {
 				m_test_result.set_text("ambiguous: %s [SSE: %f]".printf(outputs, err));
 				break;
 			default:
-				m_test_result.set_text("#%u: '%c', [SSE: %f]".printf(result,
-					(char)(32 + m_start_output.active + result), err));
+				unichar u = 32 + m_start_output.active + result;
+				string c = "      ";
+				u.to_utf8(c);
+				m_test_result.set_text("#%u: '%s', [SSE: %f]".printf(result,
+					c.chomp(), err));
 				break;
 		}
 
